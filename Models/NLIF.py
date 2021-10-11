@@ -7,8 +7,9 @@ from Models.TORCH_CUSTOM import static_clamp_for, static_clamp_for_matrix
 
 
 class NLIF(nn.Module):
-    parameter_names = ['w', 'E_L', 'tau_m', 'G', 'tau_g']  # 0,2,3,5,8
-    parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
+    free_parameters = ['w', 'W_in', 'O', 'I_o']  # 0,2,3,5,8
+    # parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
+    parameter_init_intervals = {'w': [0., 1.], 'W_in': [0., 1.], 'O': [0.5, 2.], 'I_o': [0.2, 0.6]}
 
     def __init__(self, parameters, N=12, w_mean=0.4, w_var=0.25, neuron_types=T([1, -1])):
         super(NLIF, self).__init__()
@@ -34,17 +35,20 @@ class NLIF(nn.Module):
         self.v = torch.zeros((self.N,))
         self.g = torch.zeros_like(self.v)  # syn. conductance
 
-        self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)
         if rand_ws is None:
             rand_ws = (w_mean - w_var) + 2 * w_var * torch.rand((self.N, self.N))
         nt = T(neuron_types).float()
         self.neuron_types = torch.transpose((nt * torch.ones((self.N, self.N))), 0, 1)
         self.w = nn.Parameter(FT(rand_ws), requires_grad=True)  # initialise with positive weights only
-        self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)
+        # self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)
+        self.self_recurrence_mask = torch.ones((self.N, self.N))
 
-        self.E_L = nn.Parameter(FT(E_L).clamp(-80., -35.), requires_grad=True)
-        self.tau_m = nn.Parameter(FT(tau_m).clamp(1.5, 8.), requires_grad=True)
-        self.tau_g = nn.Parameter(FT(tau_g).clamp(1., 12,), requires_grad=True)
+        self.E_L = FT(E_L).clamp(-80., -35.)
+        # self.tau_m = FT(tau_m).clamp(1.5, 8.)
+        # self.tau_g = FT(tau_g).clamp(1., 12,)
+        self.tau_m = FT(10.)
+        self.tau_g = FT(10.)
+        # self.tau_fast = FT(1.)
 
         self.register_backward_clamp_hooks()
 
@@ -82,12 +86,14 @@ class NLIF(nn.Module):
         return self.__class__.__name__
 
     def forward(self, I_ext):
-        # TODO
+        # TODO: Correct NIF formulation
         W_syn = self.w * self.neuron_types
         I_syn = (self.g).matmul(self.self_recurrence_mask * W_syn)
+        I_fast_syn = self.g_fast.matmul(self.W_fast)
 
-        # dv = (self.E_L - self.v) + (I_syn + I_ext) * self.norm_R_const) / self.tau_m
-        # v_next = torch.add(self.v, dv)
+        I_tot = I_syn + I_fast_syn + I_ext.matmul(self.W_in) + self.I_tonic
+        dv = ((self.E_L - self.v) + I_tot) / self.tau_m
+        v_next = torch.add(self.v, dv)
 
         gating = (v_next / self.theta_s).clamp(0., 1.)
         dv_max = (self.theta_s - self.E_L)
@@ -98,16 +104,13 @@ class NLIF(nn.Module):
         spiked = (v_next >= self.theta_s).float()
         not_spiked = (spiked - 1.) / -1.
 
+        self.g = spiked + not_spiked * (-self.g/self.tau_g)
+        self.g_fast = spiked + not_spiked * (-self.g_fast)
+
         self.theta_s = torch.add((1-self.b_s) * self.theta_s, spiked * self.delta_theta_s)
         v_reset = self.E_L + self.f_v * (self.v - self.E_L) - self.delta_V
         self.v = torch.add(spiked * v_reset, not_spiked * v_next)
 
-        # return self.v, self.s * self.tau_s
-        # return self.s * self.tau_s  # use synaptic current as spike signal
-        # return self.s * (self.tau_s + 1) / 2.  # return readout of synaptic current as spike signal
-
-        # differentiable
-        # soft_spiked = torch.sigmoid(torch.sub(v_next, self.theta_s))
-        # return soft_spiked  # return sigmoidal spiked
-        return gating
+        readout = self.O * self.s
+        return readout
 
