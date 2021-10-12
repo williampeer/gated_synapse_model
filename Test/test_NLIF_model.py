@@ -4,17 +4,23 @@ import numpy as np
 import torch
 
 from Models.NLIF import NLIF
+from metrics import original_loss
+from util import auto_encoder_task_input_output, feed_inputs_sequentially_return_tuple
 
 for random_seed in range(3, 4):
     torch.manual_seed(random_seed)
     np.random.seed(random_seed)
-    snn = NLIF()
+    params = {}
+    snn = NLIF(params, N=30)
 
-    sample_inputs = sine_modulated_white_noise(t=5000, N=snn.N)
+    inputs, target_outputs = auto_encoder_task_input_output(t=4800)
     print('- SNN test for class {} -'.format(snn.__class__.__name__))
-    print('#inputs: {}'.format(sample_inputs.sum()))
-    _, sample_targets = model_util.feed_inputs_sequentially_return_tuple(snn, sample_inputs)
-    sample_targets = sample_targets.clone().detach()
+    print('#inputs: {}'.format(inputs.sum()))
+    sut, model_outputs = feed_inputs_sequentially_return_tuple(snn, inputs)
+
+    loss = original_loss(model_outputs, desired_output=target_outputs)
+
+    print('loss: {}'.format(loss))
 
     # optim_params = list(snn.parameters())
     # optimiser = torch.optim.SGD(optim_params, lr=0.015)
