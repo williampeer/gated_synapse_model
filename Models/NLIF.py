@@ -43,7 +43,7 @@ class NLIF(nn.Module):
         # self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)
         self.self_recurrence_mask = torch.ones((self.N, self.N))
 
-        self.E_L = FT(E_L).clamp(-80., -35.)
+        self.v_reset = FT(0.)
         # self.tau_m = FT(tau_m).clamp(1.5, 8.)
         # self.tau_g = FT(tau_g).clamp(1., 12,)
         self.tau_m = FT(10.)
@@ -63,7 +63,7 @@ class NLIF(nn.Module):
         params_list = []
         # parameter_names = ['w', 'E_L', 'tau_m', 'tau_s', 'G', 'f_v', 'delta_theta_s', 'b_s', 'delta_V']
         params_list.append(self.w.data)
-        params_list.append(self.E_L.data)
+        # params_list.append(self.E_L.data)
         params_list.append(self.tau_m.data)
         params_list.append(self.tau_g.data)
 
@@ -92,11 +92,12 @@ class NLIF(nn.Module):
         I_fast_syn = self.g_fast.matmul(self.W_fast)
 
         I_tot = I_syn + I_fast_syn + I_ext.matmul(self.W_in) + self.I_tonic
-        dv = ((self.E_L - self.v) + I_tot) / self.tau_m
+        dv = ((self.v_reset - self.v) + I_tot) / self.tau_m
         v_next = torch.add(self.v, dv)
 
-        gating = (v_next / self.theta_s).clamp(0., 1.)
-        dv_max = (self.theta_s - self.E_L)
+        # TODO: Add
+        gating = (v_next / self.v_thresh_pos).clamp(0., 1.)
+        dv_max = (self.v_thresh_pos - self.v_reset)
         ds = (-self.s + gating * (dv / dv_max).clamp(0., 1.)) / self.tau_s
         self.s = self.s + ds
 
