@@ -19,28 +19,29 @@ class NLIF(nn.Module):
         self.N = N
 
         self.v = torch.zeros((self.N,))
-        self.g = torch.zeros_like(self.v)  # syn. conductance
-        self.g_fast = torch.zeros_like(self.v)  # syn. conductance
+        self.s = torch.zeros((self.N,))
+        self.s_fast = torch.zeros_like(self.v)  # syn. conductance
 
         rand_ws_syn = (w_mean - w_var) + 2 * w_var * torch.rand((self.N, self.N))
-        rand_ws_fast = (w_mean - w_var) + 2 * w_var * torch.rand((self.N, self.N))
-        rand_ws_in = (w_mean - w_var) + 2 * w_var * torch.rand((2, self.N))
+        rand_ws_fast = (w_mean/2. - w_var/2.) + (2/2.) * w_var * torch.rand((self.N, self.N))
+        rand_ws_in = (w_mean/5. - w_var/5.) + (2/5.) * w_var * torch.rand((2, self.N))
         # nt = T(neuron_types).float()
         # self.neuron_types = torch.transpose((nt * torch.ones((self.N, self.N))), 0, 1)
 
-        self.W_syn = nn.Parameter(FT(rand_ws_syn), requires_grad=True)  # initialise with positive weights only
-        self.W_fast = nn.Parameter(FT(rand_ws_fast), requires_grad=True)  # initialise with positive weights only
-        self.W_in = nn.Parameter(FT(rand_ws_in), requires_grad=True)  # initialise with positive weights only
+        self.W_syn = nn.Parameter(FT(rand_ws_syn), requires_grad=True)
+        self.W_fast = nn.Parameter(FT(rand_ws_fast), requires_grad=True)
+        self.W_in = nn.Parameter(FT(rand_ws_in), requires_grad=True)
 
-        self.O = nn.Parameter(torch.ones((N,)), requires_grad=True)
+        self.O = nn.Parameter(torch.ones((2, N)), requires_grad=True)  # linear readout
 
         self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)
         # self.self_recurrence_mask = torch.ones((self.N, self.N))
 
-        self.v_reset = FT(0.)
-        self.tau_m = FT(10.)
-        self.tau_g = FT(10.)
-        # self.tau_fast = FT(1.)
+        self.v_reset = 0.
+        self.tau_m = 10.
+        self.tau_s = 10.
+        # self.tau_s_fast = 1.
+        self.I_tonic = 0.
 
         # self.register_backward_clamp_hooks()
 
@@ -57,8 +58,8 @@ class NLIF(nn.Module):
         params_list.append(self.W_syn_fast.data)
         params_list.append(self.W_in.data)
 
-        params_list.append(self.tau_m.data)
-        params_list.append(self.tau_g.data)
+        params_list.append(self.tau_m)
+        params_list.append(self.tau_s)
 
         return params_list
 
@@ -68,38 +69,40 @@ class NLIF(nn.Module):
         self.reset_hidden_state()
 
         self.v = self.E_L.clone().detach() * torch.ones((self.N,))
-        self.g = torch.zeros_like(self.v)  # syn. conductance
+        self.s = torch.zeros_like(self.v)  # syn. conductance
+        self.s_fast = torch.zeros_like(self.v)  # syn. conductance
 
     def reset_hidden_state(self):
         self.v = self.v.clone().detach()
-        self.g = self.g.clone().detach()
-        self.theta_s = self.theta_s.clone().detach()
+        self.s = self.s.clone().detach()
+        self.s_fast = self.s_fast.clone().detach()
 
     def name(self):
         return self.__class__.__name__
 
     def forward(self, x_in):
         # (WIP) Correct NIF formulation
-        I_syn = (self.g).matmul(self.W_syn * self.self_recurrence_mask)
-        I_fast_syn = self.g_fast.matmul(self.W_fast * self.self_recurrence_mask)
+        I_syn = (self.s).matmul(self.W_syn * self.self_recurrence_mask)
+        I_fast_syn = self.s_fast.matmul(self.W_fast * self.self_recurrence_mask)
         I_in = x_in.matmul(self.W_in)
 
         I_tot = I_syn + I_fast_syn + I_in + self.I_tonic
         dv = (I_tot - self.v) / self.tau_m
         v_next = torch.add(self.v, dv)
 
-        ds = (self.g * dv - self.s) / self.tau_s  # ensure integral = 1
+        gating = v_next
+        ds = (gating.clamp(-1., 1.) * dv - self.s) / self.tau_s  # ensure integral = 1
         self.s = self.s + ds
+        ds_fast = (gating.clamp(-1., 1.) * dv - self.s_fast)
+        self.s_fast = self.s_fast + ds_fast
 
         spiked_pos = (v_next >= 1.).float()
         spiked_neg = (v_next <= -1.).float()
-        not_spiked = (spiked_pos - 1.) / -1. + (spiked_neg - 1.) / -1.
+        not_spiked = (spiked_pos - 1.) / -1. + (spiked_neg - 1.) / -1.  # OR || +
 
-        self.g = spiked_pos - spiked_neg + not_spiked * (-self.g/self.tau_g)
-        self.g_fast = spiked_pos - spiked_neg + not_spiked * (-self.g_fast)  # / tau_g_fast = 1.
-
+        # self.s_fast = spiked_pos - spiked_neg + not_spiked * (-self.s_fast)  # / tau_s_fast = 1.
         self.v = not_spiked * v_next  # + spiked * 0.
 
-        readout = self.O * self.s
-        return readout
+        readout = self.O.matmul(self.s)
+        return (spiked_pos + spiked_neg), readout
 
