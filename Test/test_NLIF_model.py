@@ -3,57 +3,72 @@ import sys
 import numpy as np
 import torch
 
+import util
 from Models.NLIF import NLIF
 from metrics import original_loss
-from plot import plot_spike_train_projection, plot_spike_train, plot_neuron
+import plot
 from util import auto_encoder_task_input_output, feed_inputs_sequentially_return_tuple
+
+torch.autograd.set_detect_anomaly(True)
 
 for random_seed in range(3, 4):
     torch.manual_seed(random_seed)
     np.random.seed(random_seed)
     params = {}
     snn = NLIF(N=30)
-
-    inputs, target_outputs = auto_encoder_task_input_output(t=1200)
     print('- SNN test for class {} -'.format(snn.__class__.__name__))
-    print('#inputs: {}'.format(inputs.sum()))
-    spikes, readouts = feed_inputs_sequentially_return_tuple(snn, inputs)
-    print('sum model outputs: {}'.format(readouts.sum()))
+    # Delta = 0.1/snn.N
+    Delta = 0.2
 
-    loss = original_loss(readouts, desired_output=target_outputs)
+    inputs, target_outputs = auto_encoder_task_input_output(t=2400, period_ms=300, tau_syn=200., Delta = Delta)
+    print('#inputs sum: {}'.format(inputs.sum()))
+    print('#targets sum: {}'.format(target_outputs.sum()))
+    # spikes, readouts = feed_inputs_sequentially_return_tuple(snn, inputs)
+    # print('sum model outputs: {}'.format(readouts.sum()))
 
-    print('loss: {}'.format(loss))
-    plot_neuron(inputs.detach().numpy(), ylabel='input current', title='Test plot inputs', uuid='test', fname='test_plot_inputs_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
-    plot_neuron(target_outputs.detach().numpy(), ylabel='target output', title='Test plot target outputs', uuid='test', fname='test_plot_targets_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
-    plot_neuron(readouts.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid='test', fname='test_plot_readouts_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
-    # plot_spike_train(spikes, title='Test spikes', uuid='test', fname='test_plot_spikes_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+    spikes_zero_input, readouts_zero_input, v_zero_in = feed_inputs_sequentially_return_tuple(snn, torch.zeros((2400,2)))
+    print('sum model outputs no input: {}'.format(readouts_zero_input.sum()))
+    plot.plot_neuron(readouts_zero_input.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid='test', fname='test_plot_readouts_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+    plot.plot_neuron(v_zero_in.detach().numpy(), ylabel='v', title='Test plot vs', uuid='test', fname='test_plot_v_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+    plot.plot_spike_train(spikes_zero_input, title='Test spikes', uuid='test', fname='test_plot_spikes_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
 
-    # optim_params = list(snn.parameters())
-    # optimiser = torch.optim.SGD(optim_params, lr=0.015)
-    # optimiser.zero_grad()
-    #
-    # for i in range(3):
-    #     current_inputs = sine_modulated_white_noise(t=5000, N=snn.N)
-    #     current_inputs.retain_grad()
-    #
-    #     spike_probs, spikes = model_util.feed_inputs_sequentially_return_tuple(snn, current_inputs)
-    #
-    #     m = torch.distributions.bernoulli.Bernoulli(spike_probs)
-    #     loss = -m.log_prob(sample_targets).sum()
-    #
-    #     loss.backward(retain_graph=True)
-    #
-    #     for p_i, param in enumerate(list(snn.parameters())):
-    #         print('grad for param #{}: {}'.format(p_i, param.grad))
-    #
-    # optimiser.step()
-    # hard_thresh_spikes_sum = torch.round(spikes).sum()
-    # print('spikes sum: {}'.format(hard_thresh_spikes_sum))
-    # soft_thresh_spikes_sum = (spikes > 0.333).sum()
-    # zero_thresh_spikes_sum = (spikes > 0).sum()
-    # print('thresholded spikes sum: {}'.format(torch.round(spikes).sum()))
-    # print('=========avg. hard rate: {}'.format(1000*hard_thresh_spikes_sum / (spikes.shape[1] * spikes.shape[0])))
-    # print('=========avg. soft rate: {}'.format(1000*soft_thresh_spikes_sum / (spikes.shape[1] * spikes.shape[0])))
-    # print('=========avg. zero thresh rate: {}'.format(1000*zero_thresh_spikes_sum / (spikes.shape[1] * spikes.shape[0])))
+    # loss = original_loss(readouts, desired_output=target_outputs)
+    # print('loss: {}'.format(loss))
+
+    plot.plot_neuron(inputs.detach().numpy(), ylabel='input current', title='Test plot inputs', uuid='test', fname='test_plot_inputs_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+    plot.plot_neuron(target_outputs.detach().numpy(), ylabel='target output', title='Test plot target outputs', uuid='test', fname='test_plot_targets_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+    # plot.plot_neuron(readouts.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid='test', fname='test_plot_readouts_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+    # plot.plot_spike_train(spikes, title='Test spikes', uuid='test', fname='test_plot_spikes_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+
+    optim_params = list(snn.parameters())
+    optimiser = torch.optim.SGD(optim_params, lr=0.1)
+
+    for i in range(3):
+        optimiser.zero_grad()
+
+        current_inputs = torch.tensor(inputs.clone().detach(), requires_grad=True)
+        spikes, readouts, v = feed_inputs_sequentially_return_tuple(snn, current_inputs)
+        loss = original_loss(readouts, desired_output=target_outputs.clone().detach())
+        loss.backward(retain_graph=True)
+
+        for p_i, param in enumerate(list(snn.parameters())):
+            print('grad for param #{}: {}'.format(p_i, param.grad))
+
+        optimiser.step()
+
+        plot.plot_spike_train(spikes, title='Test spikes', uuid='test',
+                              fname='test_plot_spikes_train_iter_{}_{}'.format(i, snn.__class__.__name__) + '_' + str(random_seed))
+        plot.plot_neuron(readouts.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid='test',
+                         fname='test_plot_readouts_train_iter_{}_{}'.format(i, snn.__class__.__name__) + '_' + str(random_seed))
+        plot.plot_neuron(v.detach().numpy(), ylabel='membrane potential', title='Test plot v', uuid='test',
+                         fname='test_plot_v_train_iter_{}_{}'.format(i, snn.__class__.__name__) + '_' + str(
+                             random_seed))
+
+        util.release_computational_graph(model=snn, inputs=current_inputs)
+
+    plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], 'test', 'default', 'test_heatmap_W')
+    plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], 'test', 'default', 'test_heatmap_W_fast')
+    plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], 'test', 'default', 'test_heatmap_W_in')
+    plot.plot_heatmap(snn.O.data, ['O_col', 'O_row'], 'test', 'default', 'test_heatmap_O')
 
 sys.exit(0)

@@ -40,20 +40,24 @@ def plot_spike_train(spike_train, title, uuid, exp_type='default', fname='spiket
 
 
 def plot_neuron(membrane_potentials_through_time, uuid, exp_type='default', title='Neuron activity',
-                ylabel='Membrane potential', fname='plot_neuron_test'):
+                ylabel='Membrane potential', fname='plot_neuron_test', use_legend=False):
     data = {'membrane_potentials_through_time': membrane_potentials_through_time, 'title': title, 'uuid': uuid,
             'exp_type': exp_type, 'ylabel': ylabel, 'fname': fname}
     IO.save_plot_data(data=data, uuid='test_uuid', plot_fn='plot_neuron')
-    legend = []
-    for i in range(len(membrane_potentials_through_time)):
-        legend.append('N.{}'.format(i+1))
+
     plt.figure()
     plt.plot(np.arange(membrane_potentials_through_time.shape[0]), membrane_potentials_through_time)
-    plt.legend(legend, loc='upper left', ncol=4)
+
     # plt.title(title)
+    if use_legend:
+        legend = []
+        for i in range(len(membrane_potentials_through_time)):
+            legend.append('N.{}'.format(i+1))
+        plt.legend(legend, loc='upper left', ncol=4)
     plt.xlabel('Time (ms)')
     plt.ylabel(ylabel)
     # plt.show()
+
     full_path = './figures/' + exp_type + '/' + uuid + '/'
     IO.makedir_if_not_exists(full_path)
     plt.savefig(fname=full_path + fname)
@@ -96,4 +100,29 @@ def plot_spike_train_projection(spikes, uuid='test', exp_type='default', title=F
     IO.makedir_if_not_exists(full_path)
     fig.savefig(fname=full_path + fname)
     # plt.show()
+    plt.close()
+
+
+def plot_heatmap(heat_mat, axes, exp_type, uuid, fname):
+    full_path = './figures/' + exp_type + '/' + uuid + '/'
+    IO.makedir_if_not_exists('./figures/' + exp_type + '/')
+    IO.makedir_if_not_exists(full_path)
+
+    data = {'heat_mat': heat_mat, 'exp_type': exp_type, 'uuid': uuid, 'fname': fname}
+    IO.save_plot_data(data=data, uuid=uuid, plot_fn='plot_heatmap')
+
+    for row_i in range(heat_mat.shape[0]):
+        for col_i in range(heat_mat.shape[1]):
+            if np.isnan(heat_mat[row_i][col_i]):
+                heat_mat[row_i][col_i] = 0.
+
+    a = plt.imshow(heat_mat, cmap="PuOr", vmin=-1, vmax=1)
+    cbar = plt.colorbar(a)
+    # cbar.set_label("correlation coeff.")
+    plt.xticks(np.arange(0, len(heat_mat)))
+    plt.yticks(np.arange(0, len(heat_mat)))
+    plt.ylabel(axes[0])
+    plt.xlabel(axes[1])
+    # plt.show()
+    plt.savefig(fname=full_path + fname)
     plt.close()
