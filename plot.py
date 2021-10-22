@@ -45,7 +45,7 @@ def plot_neuron(membrane_potentials_through_time, uuid, exp_type='default', titl
             'exp_type': exp_type, 'ylabel': ylabel, 'fname': fname}
     IO.save_plot_data(data=data, uuid='test_uuid', plot_fn='plot_neuron')
 
-    plt.figure()
+    # plt.figure()
     plt.plot(np.arange(membrane_potentials_through_time.shape[0]), membrane_potentials_through_time)
 
     # plt.title(title)
@@ -61,6 +61,7 @@ def plot_neuron(membrane_potentials_through_time, uuid, exp_type='default', titl
     full_path = './figures/' + exp_type + '/' + uuid + '/'
     IO.makedir_if_not_exists(full_path)
     plt.savefig(fname=full_path + fname)
+    plt.close()
 
 
 def plot_spike_train_projection(spikes, uuid='test', exp_type='default', title=False, fname=False, legend=None, export=False):
@@ -125,4 +126,30 @@ def plot_heatmap(heat_mat, axes, exp_type, uuid, fname):
     plt.xlabel(axes[1])
     # plt.show()
     plt.savefig(fname=full_path + fname)
+    plt.close()
+
+
+def plot_loss(loss, uuid, exp_type='default', custom_title=False, fname=False):
+    if not fname:
+        fname = 'loss_'+IO.dt_descriptor()
+    else:
+        fname = fname
+    data = {'loss': loss, 'exp_type': exp_type, 'custom_title': custom_title, 'fname': fname}
+    IO.save_plot_data(data=data, uuid=uuid, plot_fn='plot_loss')
+
+    plt.plot(loss)
+    # plt.legend(['Training loss', 'Test loss'])
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    # plt.xticks(range(len(loss_arr+1)))
+    if custom_title:
+        plt.title(custom_title)
+    else:
+        plt.title('Loss')
+
+    full_path = './figures/' + exp_type + '/' + uuid + '/'
+    IO.makedir_if_not_exists('./figures/' + exp_type + '/')
+    IO.makedir_if_not_exists(full_path)
+    plt.savefig(fname=full_path + fname)
+    # plt.show()
     plt.close()

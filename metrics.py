@@ -2,7 +2,7 @@ import torch
 
 
 def euclid_norm(mat):
-    return torch.sqrt(torch.pow(mat, 2).sum())
+    return torch.sqrt(torch.pow(mat, 2).sum() + 1e-12)
 
 
 def original_loss(output, desired_output, lambda_regularize=0.1):

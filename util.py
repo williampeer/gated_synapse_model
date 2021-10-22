@@ -3,14 +3,15 @@ import torch
 
 def feed_inputs_sequentially_return_tuple(model, inputs):
     print('Feeding {} inputs sequentially through SNN in time'.format(inputs.size(0)))
-    var_a, model_spiketrain, vs = model(inputs[0])
+    var_a, model_spiketrain, vs, ss = model(inputs[0])
     for x_in in inputs[1:]:
-        readout, spikes, v = model(x_in)
+        readout, spikes, v, s = model(x_in)
         var_a = torch.vstack([var_a, readout])
         model_spiketrain = torch.vstack([model_spiketrain, spikes])
         vs = torch.vstack([vs, v])
+        ss = torch.vstack([ss, s])
 
-    return var_a, model_spiketrain, vs
+    return var_a, model_spiketrain, vs, ss
 
 
 # low-pass filter

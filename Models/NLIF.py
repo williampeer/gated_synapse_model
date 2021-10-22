@@ -12,7 +12,7 @@ class NLIF(nn.Module):
     # parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
     parameter_init_intervals = {'w': [0., 1.], 'W_in': [0., 1.], 'I_o': [0.2, 0.6], 'O': [0.5, 2.]}
 
-    def __init__(self, N=30, w_mean=0.4, w_var=0.9):
+    def __init__(self, N=30, w_mean=0.2, w_var=0.3):
         super(NLIF, self).__init__()
         # self.device = device
 
@@ -26,7 +26,7 @@ class NLIF(nn.Module):
         rand_ws_syn = (w_mean - w_var) + 2 * w_var * torch.randn((self.N, self.N))
         rand_ws_fast = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, self.N))
         rand_ws_in = (w_mean - w_var) + (2) * w_var * torch.randn((2, self.N))
-        I_o = torch.ones((N,))
+        I_o = 0.001 * torch.ones((N,))
         # nt = T(neuron_types).float()
         # self.neuron_types = torch.transpose((nt * torch.ones((self.N, self.N))), 0, 1)
 
@@ -34,7 +34,7 @@ class NLIF(nn.Module):
         self.W_fast = nn.Parameter(FT(rand_ws_fast.clamp(-1., 1.)), requires_grad=True)
         self.W_in = nn.Parameter(FT(rand_ws_in.clamp(-1., 1.)), requires_grad=True)  # "U" - input weights
         self.I_o = nn.Parameter(FT(I_o), requires_grad=True)  # tonic input current
-        self.O = nn.Parameter(torch.ones((2, N)), requires_grad=True)  # linear readout
+        self.O = nn.Parameter(torch.randn((2, N)), requires_grad=True)  # linear readout
 
         self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)  # only used for W_syn
         # self.self_recurrence_mask = torch.ones((self.N, self.N))
@@ -87,17 +87,20 @@ class NLIF(nn.Module):
     def forward(self, x_in):
         # (WIP) Correct NIF formulation
         I_syn = (self.s).matmul(self.W_syn * self.self_recurrence_mask)  # should be pos w recurrence too
-        I_fast_syn = self.s_fast.matmul(self.W_fast)
+        I_fast_syn = self.s_fast.matmul(self.W_fast * self.self_recurrence_mask)
         I_in = x_in.matmul(self.W_in)
 
         I_tot = I_syn + I_fast_syn + I_in + self.I_o
-        dv = (I_tot - self.v) / self.tau_m
+        # I_tot = I_syn + I_fast_syn + I_in
+        dv = (I_tot) / self.tau_m
         v_next = torch.add(self.v, dv)
 
-        gating = v_next.clamp(-1., 1.)
+        # TODO: Figure out allowing negative spike pulses. Weights?
+        gating = v_next.clamp(0., 1.)
         ds = (gating * dv.clamp(-1., 1.) - self.s) / self.tau_s  # TODO: ensure integrals = 1
         self.s = self.s + ds
-        ds_fast = (gating * dv.clamp(-1., 1.) - self.s_fast)
+        ds_fast = (gating * dv.clamp(0., 1.) - self.s_fast)
+        # ds_fast = (gating * dv.clamp(-1., 1.))
         self.s_fast = self.s_fast + ds_fast
 
         spiked_pos = (v_next >= 1.).float()
@@ -109,5 +112,5 @@ class NLIF(nn.Module):
 
         readout = self.O.matmul(self.s)
         # return (spiked_pos + spiked_neg), readout
-        return spiked_pos, readout, self.v
+        return spiked_pos, readout, self.v, self.s
 
