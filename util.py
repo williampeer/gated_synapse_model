@@ -25,11 +25,11 @@ def auto_encoder_task_input_output(t=2400, period_ms=600, tau_syn=200., Delta = 
 
 
 # Linear dynamic relationships between desired I-O signals.
-def general_predictive_encoding_task_input_output(t=2400, period_ms=600, tau_syn=200.,
+def general_predictive_encoding_task_input_output(t=2400, period_ms=600, tau_syn=200., Delta = 1.,
                                                   A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])):
     period_rads = (3.141592 / period_ms)
     assert A_mat is not None and len(A_mat.shape) == 2, "A_mat must be defined and not none."
-    input = torch.sin(torch.ones((2, 1)) * period_rads * torch.arange(0, t))
+    input = Delta * torch.sin(torch.ones((2, 1)) * period_rads * torch.arange(0, t))
     out_dot = input[:,0]/tau_syn
     out_dot = torch.vstack([out_dot, out_dot])
     for t_i in range(t-1):

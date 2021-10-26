@@ -12,7 +12,7 @@ class NLIF(nn.Module):
     # parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
     parameter_init_intervals = {'w': [0., 1.], 'W_in': [0., 1.], 'I_o': [0.2, 0.6], 'O': [0.5, 2.]}
 
-    def __init__(self, N=30, w_mean=0.2, w_var=0.5):
+    def __init__(self, N=30, w_mean=0.05, w_var=0.2):
         super(NLIF, self).__init__()
         # self.device = device
 
@@ -39,12 +39,13 @@ class NLIF(nn.Module):
         self.W_fast = nn.Parameter(FT(rand_ws_fast.clamp(-1., 1.)), requires_grad=True)
         self.W_in = nn.Parameter(FT(rand_ws_in.clamp(-1., 1.)), requires_grad=True)  # "U" - input weights
         self.I_o = nn.Parameter(FT(I_o), requires_grad=True)  # tonic input current
-        self.O = nn.Parameter(torch.randn((2, N)), requires_grad=True)  # linear readout
+        self.O = nn.Parameter(torch.randn((N, 2)), requires_grad=True)  # linear readout
 
         self.v_reset = 0.
         self.tau_m = 10.
         self.tau_s = 10.
         self.tau_s_fast = 1.  # TODO: Verify whether it's 1 or 2.
+        # self.Delta = 0.1
 
         self.register_backward_clamp_hooks()
 
@@ -97,7 +98,6 @@ class NLIF(nn.Module):
         dv = ((I_tot) / self.tau_m)
         v_next = torch.add(self.v, dv)
 
-        # TODO: Figure out allowing negative spike pulses. Weights?
         gating = v_next.clamp(0., 1.)
         ds = (gating * dv.clamp(-1., 1.) - self.s) / self.tau_s  # TODO: ensure integrals = 1
         self.s = self.s + ds
@@ -113,7 +113,7 @@ class NLIF(nn.Module):
         # self.s_fast = spiked_pos - spiked_neg + not_spiked * (-self.s_fast)  # / tau_s_fast = 1.
         self.v = not_spiked * v_next  # + spiked * 0.
 
-        readout = self.O.matmul(self.s)
+        readout = self.s.matmul(self.O)
         # return (spiked_pos + spiked_neg), readout
         return spiked, readout, self.v, self.s
         # return spiked_pos, readout, I_in, I_syn

@@ -22,13 +22,17 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.005
-    # exp_type = ExpType.AutoEncoding
-    exp_type = ExpType.GeneralPredictiveEncoding
+    learn_rate = 0.01
+    exp_type = ExpType.AutoEncoding
+    # exp_type = ExpType.GeneralPredictiveEncoding
     num_seeds = 1
     N = 30
+    train_iters = 20
     lambda_regularize = 0.1 / N
+    # Delta = 1.
+    # Delta = 0.1 / N
     t = 2400
+
     # Delta = 0.1/snn.N
 
     opts = [opt for opt in argv if opt.startswith("-")]
@@ -39,6 +43,8 @@ def main(argv):
             sys.exit()
         elif opt in ("-lr", "--learning-rate"):
             learn_rate = float(args[i])
+        elif opt in ("-ti", "--training-iterations"):
+            train_iters = int(args[i])
         elif opt in ("-nsds", "--num-seeds"):
             num_seeds = int(args[i])
         elif opt in ("-lregul", "--lambda-regularize"):
@@ -47,6 +53,8 @@ def main(argv):
             N = int(args[i])
         elif opt in ("-t", "--time-per-iteration"):
             t = float(args[i])
+        elif opt in ("-D", "--Delta"):
+            Delta = float(args[i])
         elif opt in ("-et", "--exp-type"):
             exp_type = ExpType[args[i]]
 
@@ -59,12 +67,12 @@ def main(argv):
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
 
+        period_ms = 600
         if exp_type is ExpType.AutoEncoding:
-            Delta = 1.
-            inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=600, tau_syn=200., Delta = Delta)
+            inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_syn=200.)
         elif exp_type is ExpType.GeneralPredictiveEncoding:
             A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])
-            inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=600, tau_syn=200., A_mat=A_mat)
+            inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=period_ms, tau_syn=200., A_mat=A_mat)
         else:
             raise NotImplementedError("ExpType not in predefined enum.")
 
@@ -91,7 +99,7 @@ def main(argv):
         optimiser = torch.optim.SGD(optim_params, lr=learn_rate)
 
         losses = []
-        for i in range(50):
+        for i in range(train_iters):
             print('training iter: {}..'.format(i))
             optimiser.zero_grad()
 
@@ -128,10 +136,11 @@ def main(argv):
 
         plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, fname='plot_loss_test')
 
-        plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W')
         plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_fast')
+        # plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W')
+        plot.plot_heatmap((- snn.O.matmul(snn.W_in)).data, ['-UO column', '-UO row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_minO_T_U')
         plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_in')
-        plot.plot_heatmap(snn.O.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_O')
+        plot.plot_heatmap(snn.O.T.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_O_T')
 
 
 if __name__ == "__main__":
