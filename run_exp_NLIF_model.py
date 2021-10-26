@@ -8,7 +8,8 @@ import torch
 import IO
 import plot
 import util
-from Models.NLIF import NLIF
+from Models import NLIF_transposed
+from Models import NLIF
 from metrics import original_loss
 
 torch.autograd.set_detect_anomaly(True)
@@ -22,7 +23,7 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.01
+    learn_rate = 0.005
     exp_type = ExpType.AutoEncoding
     # exp_type = ExpType.GeneralPredictiveEncoding
     num_seeds = 1
@@ -31,7 +32,8 @@ def main(argv):
     lambda_regularize = 0.1 / N
     # Delta = 1.
     # Delta = 0.1 / N
-    t = 2400
+    t = 4800
+    tau_filter = 50.
 
     # Delta = 0.1/snn.N
 
@@ -62,17 +64,19 @@ def main(argv):
         torch.manual_seed(random_seed)
         np.random.seed(random_seed)
 
-        snn = NLIF(N=N)
+        # snn = Models.NLIF.NLIF(N=N)
+        snn = NLIF_transposed.NLIF(N=N)
         print('- SNN test for class {} -'.format(snn.__class__.__name__))
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
 
         period_ms = 600
         if exp_type is ExpType.AutoEncoding:
-            inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_syn=200.)
+            inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter, Delta=0.1)
         elif exp_type is ExpType.GeneralPredictiveEncoding:
             A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])
-            inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=period_ms, tau_syn=200., A_mat=A_mat)
+            inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
+                                                                                        Delta=0.1, A_mat=A_mat)
         else:
             raise NotImplementedError("ExpType not in predefined enum.")
 
@@ -138,9 +142,10 @@ def main(argv):
 
         plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_fast')
         # plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W')
-        plot.plot_heatmap((- snn.O.matmul(snn.W_in)).data, ['-UO column', '-UO row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_minO_T_U')
-        plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_in')
-        plot.plot_heatmap(snn.O.T.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_O_T')
+        plot.plot_heatmap((- snn.W_in.matmul(snn.O)).data, ['-UO column', '-UO row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_minUO')
+
+        plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_W_in')
+        plot.plot_heatmap(snn.O.T.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_O_T')
 
 
 if __name__ == "__main__":
