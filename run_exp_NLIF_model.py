@@ -75,15 +75,15 @@ def main(argv):
 
         spikes_zero_input, readouts_zero_input, v_zero_in, s_zero_in = util.feed_inputs_sequentially_return_tuple(snn, torch.zeros((t,2)))
         print('sum model outputs no input: {}'.format(readouts_zero_input.sum()))
-        plot.plot_neuron(readouts_zero_input.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid=uuid, fname='test_plot_readouts_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
-        plot.plot_neuron(v_zero_in.detach().numpy(), ylabel='v', title='Test plot vs', uuid=uuid, fname='test_plot_v_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
-        plot.plot_spike_train(spikes_zero_input, title='Test spikes', uuid=uuid, fname='test_plot_spikes_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+        plot.plot_neuron(readouts_zero_input.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid=uuid, exp_type=exp_type.name, fname='test_plot_readouts_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+        plot.plot_neuron(v_zero_in.detach().numpy(), ylabel='v', title='Test plot vs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_v_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+        plot.plot_spike_train(spikes_zero_input, title='Test spikes', uuid=uuid, exp_type=exp_type.name, fname='test_plot_spikes_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
 
         # loss = original_loss(readouts, desired_output=target_outputs)
         # print('loss: {}'.format(loss))
 
-        plot.plot_neuron(inputs.detach().numpy(), ylabel='input current', title='Test plot inputs', uuid=uuid, fname='test_plot_inputs_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
-        plot.plot_neuron(target_outputs.detach().numpy(), ylabel='target output', title='Test plot target outputs', uuid=uuid, fname='test_plot_itargets_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+        plot.plot_neuron(inputs.detach().numpy(), ylabel='input current', title='Test plot inputs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_inputs_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+        plot.plot_neuron(target_outputs.detach().numpy(), ylabel='target output', title='Test plot target outputs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_itargets_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
         # plot.plot_neuron(readouts.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid=uuid, fname='test_plot_readouts_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
         # plot.plot_spike_train(spikes, title='Test spikes', uuid=uuid, fname='test_plot_spikes_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
 
@@ -110,13 +110,13 @@ def main(argv):
 
             optimiser.step()
 
-            plot.plot_spike_train(spikes, title='Test spikes', uuid=uuid,
+            plot.plot_spike_train(spikes, title='Test spikes', uuid=uuid, exp_type=exp_type.name,
                                   fname='test_plot_spikes_train_iter_{}_{}'.format(i, snn.__class__.__name__) + '_' + str(random_seed))
-            plot.plot_neuron(readouts.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid=uuid,
+            plot.plot_neuron(readouts.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid=uuid, exp_type=exp_type.name,
                              fname='test_plot_readouts_train_iter_{}_{}'.format(i, snn.__class__.__name__) + '_' + str(random_seed))
-            plot.plot_neuron(v.detach().numpy(), ylabel='membrane potential', title='Test plot $v$', uuid=uuid,
+            plot.plot_neuron(v.detach().numpy(), ylabel='membrane potential', title='Test plot $v$', uuid=uuid, exp_type=exp_type.name,
                              fname='test_plot_v_train_iter_{}_{}'.format(i, snn.__class__.__name__) + '_' + str(random_seed))
-            plot.plot_neuron(s.detach().numpy(), ylabel='syn currents', title='Test plot $s$', uuid=uuid,
+            plot.plot_neuron(s.detach().numpy(), ylabel='syn currents', title='Test plot $s$', uuid=uuid, exp_type=exp_type.name,
                              fname='test_plot_s_train_iter_{}_{}'.format(i, snn.__class__.__name__) + '_' + str(random_seed))
             plt.close()
 
@@ -128,10 +128,10 @@ def main(argv):
 
         plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, fname='plot_loss_test')
 
-        plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], uuid=uuid, exp_type=exp_type, fname='test_heatmap_W')
-        plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type, fname='test_heatmap_W_fast')
-        plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], uuid=uuid, exp_type=exp_type, fname='test_heatmap_W_in')
-        plot.plot_heatmap(snn.O.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type, fname='test_heatmap_O')
+        plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W')
+        plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_fast')
+        plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_in')
+        plot.plot_heatmap(snn.O.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_O')
 
 
 if __name__ == "__main__":

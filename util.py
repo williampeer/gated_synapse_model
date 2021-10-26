@@ -37,7 +37,7 @@ def general_predictive_encoding_task_input_output(t=2400, period_ms=600, tau_syn
         dv_out = (A_mat.matmul(out_dot[-1,:]) - out_dot[-1,:] + input[:,t_i]) / tau_syn
         out_next = out_dot[-1,:] + dv_out
         out_dot = torch.vstack([out_dot, out_next])
-    return (input, out_dot[1:,:].T)
+    return (input.T, out_dot[1:,:])
 
 
 def release_computational_graph(model, inputs=None):

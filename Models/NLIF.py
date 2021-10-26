@@ -44,7 +44,7 @@ class NLIF(nn.Module):
         self.v_reset = 0.
         self.tau_m = 10.
         self.tau_s = 10.
-        self.tau_s_fast = 1.
+        self.tau_s_fast = 1.  # TODO: Verify whether it's 1 or 2.
 
         self.register_backward_clamp_hooks()
 
