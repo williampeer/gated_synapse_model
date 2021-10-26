@@ -40,12 +40,11 @@ def save_poisson_rates(rates, uuid, fname='default_poisson_rates'):
     torch.save(rates, PATH+uuid+'/'+fname+fname_ext)
 
 
-def save(model, rate, loss, uuid, fname='test_exp_dict'):
+def save(model, loss, uuid, fname='test_exp_dict'):
     makedir_if_not_exists(PATH + uuid)
 
     torch.save({
         'model': model,
-        'rate': rate,
         'loss': loss
     }, PATH+uuid+'/'+fname+fname_ext)
 

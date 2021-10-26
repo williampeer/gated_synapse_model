@@ -3,19 +3,19 @@ import torch
 
 def feed_inputs_sequentially_return_tuple(model, inputs):
     print('Feeding {} inputs sequentially through SNN in time'.format(inputs.size(0)))
-    var_a, model_spiketrain, vs, ss = model(inputs[0])
+    spikes, readouts, vs, ss = model(inputs[0])
     for x_in in inputs[1:]:
-        readout, spikes, v, s = model(x_in)
-        var_a = torch.vstack([var_a, readout])
-        model_spiketrain = torch.vstack([model_spiketrain, spikes])
+        spiked, readout, v, s = model(x_in)
+        spikes = torch.vstack([spikes, spiked])
+        readouts = torch.vstack([readouts, readout])
         vs = torch.vstack([vs, v])
         ss = torch.vstack([ss, s])
 
-    return var_a, model_spiketrain, vs, ss
+    return spikes, readouts, vs, ss
 
 
 # low-pass filter
-def auto_encoder_task_input_output(t=4800, period_ms=1200, tau_syn=200., Delta = 1.):
+def auto_encoder_task_input_output(t=2400, period_ms=600, tau_syn=200., Delta = 1.):
     period_rads = (3.141592 / period_ms)
     input = Delta * torch.sin(period_rads * torch.reshape(torch.arange(0, t), (t, 1)))
     out_dot = torch.torch.tensor([input[0]/tau_syn])
@@ -24,8 +24,20 @@ def auto_encoder_task_input_output(t=4800, period_ms=1200, tau_syn=200., Delta =
     return (torch.ones((2,)) * input, torch.ones((2,)) * out_dot)
 
 
-def general_predictive_coding_task_input_output():
-    pass
+# Linear dynamic relationships between desired I-O signals.
+def general_predictive_encoding_task_input_output(t=2400, period_ms=600, tau_syn=200.,
+                                                  A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])):
+    period_rads = (3.141592 / period_ms)
+    assert A_mat is not None and len(A_mat.shape) == 2, "A_mat must be defined and not none."
+    input = torch.sin(torch.ones((2, 1)) * period_rads * torch.arange(0, t))
+    out_dot = input[:,0]/tau_syn
+    out_dot = torch.vstack([out_dot, out_dot])
+    for t_i in range(t-1):
+        # A_mat.matmul(
+        dv_out = (A_mat.matmul(out_dot[-1,:]) - out_dot[-1,:] + input[:,t_i]) / tau_syn
+        out_next = out_dot[-1,:] + dv_out
+        out_dot = torch.vstack([out_dot, out_next])
+    return (input, out_dot[1:,:].T)
 
 
 def release_computational_graph(model, inputs=None):

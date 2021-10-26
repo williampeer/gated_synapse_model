@@ -12,7 +12,7 @@ class NLIF(nn.Module):
     # parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
     parameter_init_intervals = {'w': [0., 1.], 'W_in': [0., 1.], 'I_o': [0.2, 0.6], 'O': [0.5, 2.]}
 
-    def __init__(self, N=30, w_mean=0.2, w_var=0.3):
+    def __init__(self, N=30, w_mean=0.2, w_var=0.5):
         super(NLIF, self).__init__()
         # self.device = device
 
@@ -23,10 +23,15 @@ class NLIF(nn.Module):
         self.s = torch.zeros((self.N,))
         self.s_fast = torch.zeros_like(self.v)  # syn. conductance
 
+        self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)
+
         rand_ws_syn = (w_mean - w_var) + 2 * w_var * torch.randn((self.N, self.N))
+        rand_ws_syn = rand_ws_syn * self.self_recurrence_mask
         rand_ws_fast = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, self.N))
+        rand_ws_fast = rand_ws_fast * self.self_recurrence_mask
+        # rand_ws_fast = torch.zeros((self.N, self.N))
         rand_ws_in = (w_mean - w_var) + (2) * w_var * torch.randn((2, self.N))
-        I_o = 0.001 * torch.ones((N,))
+        I_o = 0.01 * torch.ones((N,))
         # nt = T(neuron_types).float()
         # self.neuron_types = torch.transpose((nt * torch.ones((self.N, self.N))), 0, 1)
 
@@ -36,13 +41,10 @@ class NLIF(nn.Module):
         self.I_o = nn.Parameter(FT(I_o), requires_grad=True)  # tonic input current
         self.O = nn.Parameter(torch.randn((2, N)), requires_grad=True)  # linear readout
 
-        self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)  # only used for W_syn
-        # self.self_recurrence_mask = torch.ones((self.N, self.N))
-
         self.v_reset = 0.
         self.tau_m = 10.
         self.tau_s = 10.
-        # self.tau_s_fast = 1.
+        self.tau_s_fast = 1.
 
         self.register_backward_clamp_hooks()
 
@@ -92,25 +94,27 @@ class NLIF(nn.Module):
 
         I_tot = I_syn + I_fast_syn + I_in + self.I_o
         # I_tot = I_syn + I_fast_syn + I_in
-        dv = (I_tot) / self.tau_m
+        dv = ((I_tot) / self.tau_m)
         v_next = torch.add(self.v, dv)
 
         # TODO: Figure out allowing negative spike pulses. Weights?
         gating = v_next.clamp(0., 1.)
         ds = (gating * dv.clamp(-1., 1.) - self.s) / self.tau_s  # TODO: ensure integrals = 1
         self.s = self.s + ds
-        ds_fast = (gating * dv.clamp(0., 1.) - self.s_fast)
+        ds_fast = (gating * dv.clamp(-1., 1.) - self.s_fast) / self.tau_s_fast
         # ds_fast = (gating * dv.clamp(-1., 1.))
         self.s_fast = self.s_fast + ds_fast
 
-        spiked_pos = (v_next >= 1.).float()
-        spiked_neg = (v_next <= -1.).float()
-        not_spiked = torch.ones_like(gating) - (spiked_pos - 1.) / -1. + (spiked_neg - 1.) / -1.  # OR || +
+        spiked_pos = (v_next >= 1.)
+        spiked_neg = (v_next <= -1.)
+        spiked = (spiked_pos + spiked_neg).float()
+        not_spiked = torch.ones_like(spiked)-spiked
 
         # self.s_fast = spiked_pos - spiked_neg + not_spiked * (-self.s_fast)  # / tau_s_fast = 1.
         self.v = not_spiked * v_next  # + spiked * 0.
 
         readout = self.O.matmul(self.s)
         # return (spiked_pos + spiked_neg), readout
-        return spiked_pos, readout, self.v, self.s
+        return spiked, readout, self.v, self.s
+        # return spiked_pos, readout, I_in, I_syn
 

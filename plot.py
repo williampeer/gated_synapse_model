@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
+from matplotlib.ticker import FormatStrFormatter
 from mpl_toolkits.mplot3d import Axes3D
 
 import IO
@@ -141,6 +142,7 @@ def plot_loss(loss, uuid, exp_type='default', custom_title=False, fname=False):
     # plt.legend(['Training loss', 'Test loss'])
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
+    # ax.yaxis.set_major_formatter(FormatStrFormatter('% 1.2f'))
     # plt.xticks(range(len(loss_arr+1)))
     if custom_title:
         plt.title(custom_title)
