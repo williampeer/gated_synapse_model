@@ -18,9 +18,9 @@ def feed_inputs_sequentially_return_tuple(model, inputs):
 def auto_encoder_task_input_output(t=2400, period_ms=600, tau_filter=100., Delta = 1.):
     period_rads = (3.141592 / period_ms)
     input = Delta * torch.sin(period_rads * torch.reshape(torch.arange(0, t), (t, 1)))
-    out_dot = torch.torch.tensor([input[0]/tau_syn])
+    out_dot = torch.torch.tensor([input[0]/tau_filter])
     for t_i in range(t-1):
-        out_dot = torch.vstack([out_dot, out_dot[-1]+(input[t_i]-out_dot[-1])/tau_syn])
+        out_dot = torch.vstack([out_dot, out_dot[-1]+(input[t_i]-out_dot[-1])/tau_filter])
     return (torch.ones((2,)) * input, torch.ones((2,)) * out_dot)
 
 
@@ -30,11 +30,11 @@ def general_predictive_encoding_task_input_output(t=2400, period_ms=600, tau_fil
     period_rads = (3.141592 / period_ms)
     assert A_mat is not None and len(A_mat.shape) == 2, "A_mat must be defined and not none."
     input = Delta * torch.sin(torch.ones((2, 1)) * period_rads * torch.arange(0, t))
-    out_dot = input[:,0]/tau_syn
+    out_dot = input[:,0]/tau_filter
     out_dot = torch.vstack([out_dot, out_dot])
     for t_i in range(t-1):
         # A_mat.matmul(
-        dv_out = (A_mat.matmul(out_dot[-1,:]) - out_dot[-1,:] + input[:,t_i]) / tau_syn
+        dv_out = (A_mat.matmul(out_dot[-1,:]) - out_dot[-1,:] + input[:,t_i]) / tau_filter
         out_next = out_dot[-1,:] + dv_out
         out_dot = torch.vstack([out_dot, out_next])
     return (input.T, out_dot[1:,:])

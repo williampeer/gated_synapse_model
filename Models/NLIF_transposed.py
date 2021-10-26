@@ -12,7 +12,7 @@ class NLIF(nn.Module):
     # parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
     parameter_init_intervals = {'w': [0., 1.], 'W_in': [0., 1.], 'I_o': [0.2, 0.6], 'O': [0.5, 2.]}
 
-    def __init__(self, N=30, w_mean=0.05, w_var=0.2):
+    def __init__(self, N=30, w_mean=0., w_var=0.4):
         super(NLIF, self).__init__()
         # self.device = device
 
