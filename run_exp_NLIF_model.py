@@ -23,15 +23,16 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.005
+    learn_rate = 0.001
     exp_type = ExpType.AutoEncoding
     # exp_type = ExpType.GeneralPredictiveEncoding
     num_seeds = 1
     N = 30
-    train_iters = 20
+    train_iters = 50
     lambda_regularize = 0.1 / N
     # Delta = 1.
     # Delta = 0.1 / N
+    period_ms = 600
     t = 4800
     tau_filter = 50.
 
@@ -70,7 +71,6 @@ def main(argv):
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
 
-        period_ms = 600
         if exp_type is ExpType.AutoEncoding:
             inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter, Delta=0.1)
         elif exp_type is ExpType.GeneralPredictiveEncoding:
@@ -138,7 +138,7 @@ def main(argv):
         cur_fname = '{}_exp_{}_random_seed_{}'.format(snn.__class__.__name__, 'auto_encode', random_seed)
         IO.save(snn, loss=losses, uuid=uuid, fname=cur_fname)
 
-        plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, fname='plot_loss_test')
+        plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, custom_title='Loss, lr={}'.format(learn_rate), fname='plot_loss_test')
 
         plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_fast')
         # plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W')

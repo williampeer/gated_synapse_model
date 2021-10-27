@@ -44,7 +44,7 @@ class NLIF(nn.Module):
         self.v_reset = 0.
         self.tau_m = 10.
         self.tau_s = 10.
-        self.tau_s_fast = 1.  # TODO: Verify whether it's 1 or 2.
+        self.tau_s_fast = 1.
         # self.Delta = 0.1
 
         self.register_backward_clamp_hooks()
@@ -99,7 +99,7 @@ class NLIF(nn.Module):
         v_next = torch.add(self.v, dv)
 
         gating = v_next.clamp(0., 1.)
-        ds = (gating * dv.clamp(-1., 1.) - self.s) / self.tau_s  # TODO: ensure integrals = 1
+        ds = (gating * dv.clamp(-1., 1.) - self.s) / self.tau_s
         self.s = self.s + ds
         ds_fast = (gating * dv.clamp(-1., 1.) - self.s_fast) / self.tau_s_fast
         # ds_fast = (gating * dv.clamp(-1., 1.))
