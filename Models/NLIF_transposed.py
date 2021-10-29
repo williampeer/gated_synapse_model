@@ -31,7 +31,7 @@ class NLIF(nn.Module):
         rand_ws_fast = rand_ws_fast * self.self_recurrence_mask
         # rand_ws_fast = torch.zeros((self.N, self.N))
         rand_ws_in = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, 2))
-        I_o = 0.01 * torch.ones((N,))
+        I_o = 0.005 * torch.ones((N,))
         # nt = T(neuron_types).float()
         # self.neuron_types = torch.transpose((nt * torch.ones((self.N, self.N))), 0, 1)
 
@@ -75,9 +75,9 @@ class NLIF(nn.Module):
             p.grad = None
         self.reset_hidden_state()
 
-        self.v = torch.zeros((self.N,))
-        self.s = torch.zeros_like(self.v)  # syn. conductance
-        self.s_fast = torch.zeros_like(self.v)  # syn. conductance
+        # self.v = torch.zeros((self.N,))
+        # self.s = torch.zeros_like(self.v)  # syn. conductance
+        # self.s_fast = torch.zeros_like(self.v)  # syn. conductance
 
     def reset_hidden_state(self):
         self.v = self.v.clone().detach()

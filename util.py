@@ -15,17 +15,17 @@ def feed_inputs_sequentially_return_tuple(model, inputs):
 
 
 # low-pass filter
-def auto_encoder_task_input_output(t=2400, period_ms=600, tau_filter=100., Delta = 1.):
+def auto_encoder_task_input_output(t=2400, period_ms=50, tau_filter=100., Delta = 1., A_mat = torch.tensor([1., 0.5])):
     period_rads = (3.141592 / period_ms)
     input = Delta * torch.sin(period_rads * torch.reshape(torch.arange(0, t), (t, 1)))
     out_dot = torch.torch.tensor([input[0]/tau_filter])
     for t_i in range(t-1):
         out_dot = torch.vstack([out_dot, out_dot[-1]+(input[t_i]-out_dot[-1])/tau_filter])
-    return (torch.ones((2,)) * input, torch.ones((2,)) * out_dot)
+    return (A_mat * (input), A_mat * (out_dot))
 
 
 # Linear dynamic relationships between desired I-O signals.
-def general_predictive_encoding_task_input_output(t=2400, period_ms=600, tau_filter=100., Delta = 1.,
+def general_predictive_encoding_task_input_output(t=2400, period_ms=50, tau_filter=100., Delta = 1.,
                                                   A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])):
     period_rads = (3.141592 / period_ms)
     assert A_mat is not None and len(A_mat.shape) == 2, "A_mat must be defined and not none."

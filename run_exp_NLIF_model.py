@@ -32,8 +32,8 @@ def main(argv):
     lambda_regularize = 0.1 / N
     # Delta = 1.
     # Delta = 0.1 / N
-    period_ms = 600
-    t = 4800
+    period_ms = 50
+    t = 2400
     tau_filter = 50.
 
     # Delta = 0.1/snn.N
