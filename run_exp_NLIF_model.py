@@ -23,7 +23,7 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.005
+    learn_rate = 0.01
     # exp_type = ExpType.AutoEncoding
     exp_type = ExpType.GeneralPredictiveEncoding
     num_seeds = 1
@@ -141,6 +141,17 @@ def main(argv):
         IO.save(snn, loss=losses, uuid=uuid, fname=cur_fname)
 
         plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, custom_title='Loss, lr={}'.format(learn_rate), fname='plot_loss_test')
+
+        def sort_matrix_wrt_weighted_centers(mat):
+            center_tuples = []
+            for row_i in range(mat.shape[0]):
+                weighted_center = int((mat[row_i,:] * torch.arange(mat.shape[1])).sum()/mat.shape[1])
+                center_tuples.append((weighted_center, row_i))
+            center_tuples.sort()
+            new_mat = torch.zeros_like(mat)
+            for row_i in range(mat.shape[0]):
+                new_mat[row_i] = mat[center_tuples[row_i][1]]
+            return new_mat
 
         plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_fast')
         # plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W')
