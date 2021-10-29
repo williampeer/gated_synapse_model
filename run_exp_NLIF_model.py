@@ -23,17 +23,17 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.001
-    exp_type = ExpType.AutoEncoding
-    # exp_type = ExpType.GeneralPredictiveEncoding
+    learn_rate = 0.005
+    # exp_type = ExpType.AutoEncoding
+    exp_type = ExpType.GeneralPredictiveEncoding
     num_seeds = 1
     N = 30
-    train_iters = 50
+    train_iters = 40
     lambda_regularize = 0.1 / N
-    # Delta = 1.
+    Delta = 0.1
     # Delta = 0.1 / N
     period_ms = 50
-    t = 2400
+    t = 1200
     tau_filter = 50.
 
     # Delta = 0.1/snn.N
@@ -71,12 +71,14 @@ def main(argv):
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
 
+        A_in = torch.tensor([1.0, 0.5])
         if exp_type is ExpType.AutoEncoding:
-            inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter, Delta=0.1)
+            inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
+                                                                         Delta=Delta, A_in=A_in)
         elif exp_type is ExpType.GeneralPredictiveEncoding:
             A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])
             inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
-                                                                                        Delta=0.1, A_mat=A_mat)
+                                                                                        Delta=Delta, A_in=A_in, A_mat=A_mat)
         else:
             raise NotImplementedError("ExpType not in predefined enum.")
 
