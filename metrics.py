@@ -9,7 +9,8 @@ def original_loss(output, desired_output, lambda_regularize=0.1):
     overall_activity = output
     assert output.shape[0] > output.shape[1]
     rate_scale = output.shape[0] / 1000.
-    loss = (euclid_norm(output-desired_output) + lambda_regularize*rate_scale*euclid_norm(overall_activity)) / 2.
+    # loss = (euclid_norm(output-desired_output) + lambda_regularize*rate_scale*euclid_norm(overall_activity)) / 2.
+    loss = (euclid_norm(output-desired_output) + lambda_regularize*euclid_norm(overall_activity)) / 2.
     return loss
 
 

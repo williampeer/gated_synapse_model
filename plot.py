@@ -1,11 +1,9 @@
 import matplotlib.pyplot as plt
-import torch
 import numpy as np
-from matplotlib.ticker import FormatStrFormatter
+import torch
 from mpl_toolkits.mplot3d import Axes3D
 
 import IO
-
 
 plt.rcParams.update({'font.size': 12})
 
@@ -41,7 +39,7 @@ def plot_spike_train(spike_train, title, uuid, exp_type='default', fname='spiket
 
 
 def plot_neuron(membrane_potentials_through_time, uuid, exp_type='default', title='Neuron activity',
-                ylabel='Membrane potential', fname='plot_neuron_test', use_legend=False):
+                ylabel='Membrane potential', fname='plot_neuron_test', use_legend=False, legend=False):
     data = {'membrane_potentials_through_time': membrane_potentials_through_time, 'title': title, 'uuid': uuid,
             'exp_type': exp_type, 'ylabel': ylabel, 'fname': fname}
     IO.save_plot_data(data=data, uuid='test_uuid', plot_fn='plot_neuron')
@@ -55,6 +53,8 @@ def plot_neuron(membrane_potentials_through_time, uuid, exp_type='default', titl
         for i in range(len(membrane_potentials_through_time)):
             legend.append('N.{}'.format(i+1))
         plt.legend(legend, loc='upper left', ncol=4)
+    if legend:
+        plt.legend(legend)
     plt.xlabel('Time (ms)')
     plt.ylabel(ylabel)
     # plt.show()
@@ -154,4 +154,16 @@ def plot_loss(loss, uuid, exp_type='default', custom_title=False, fname=False):
     IO.makedir_if_not_exists(full_path)
     plt.savefig(fname=full_path + fname)
     # plt.show()
+    plt.close()
+
+
+def plot_weights_dots(U, O, uuid, exp_type):
+    plt.scatter(U[:,0], U[:,1])
+    plt.scatter(O[:,0], O[:,1])
+    plt.xlabel('$i,j$')
+    plt.ylabel('$i,j$')
+    plt.title('U, O')
+    plt.legend(['U', 'O'])
+    full_path = './figures/' + exp_type + '/' + uuid + '/'
+    plt.savefig(full_path+'_weights_O_U.png')
     plt.close()
