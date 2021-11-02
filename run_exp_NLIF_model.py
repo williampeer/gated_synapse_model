@@ -22,16 +22,16 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.02
-    # exp_type = ExpType.AutoEncoding
-    exp_type = ExpType.GeneralPredictiveEncoding
+    learn_rate = 0.01
+    exp_type = ExpType.AutoEncoding
+    # exp_type = ExpType.GeneralPredictiveEncoding
     num_seeds = 1
     N = 30
-    train_iters = 50
+    train_iters = 100
     plot_modulo = 10
-    # lambda_regularize = 0.1 / N
+    lambda_regularize = 0.1 / N
     # lambda_regularize = 0.01 / N
-    lambda_regularize = 0.01
+    # lambda_regularize = 0.01
     Delta = 1.
     # Delta = 0.1 / N
     period_ms = 40
@@ -158,7 +158,7 @@ def main(argv):
         cur_fname = '{}_exp_{}_random_seed_{}'.format(snn.__class__.__name__, 'auto_encode', random_seed)
         IO.save(snn, loss=losses, uuid=uuid, fname=cur_fname)
 
-        plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, custom_title='Loss, lr={}, optim: {}'.format(learn_rate, optimiser.__class__.__name__), fname='plot_loss_test')
+        plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, custom_title='Loss, $\\alpha$={}, $\lambda$={}, {}'.format(learn_rate, lambda_regularize, optimiser.__class__.__name__), fname='plot_loss_test')
 
         def sort_matrix_wrt_weighted_centers(mat):
             center_tuples = []

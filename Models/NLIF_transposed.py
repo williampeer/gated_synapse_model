@@ -90,12 +90,12 @@ class NLIF(nn.Module):
         return self.__class__.__name__
 
     def forward(self, x_in):
+        # try:
         I_in = self.W_in.matmul(x_in)
-        try:
-            I_fast_syn = (self.W_fast * self.self_recurrence_mask).matmul(self.s_fast)
-        except RuntimeError as re:
-            print('re')
-        I_syn = (self.W_syn).matmul((self.s))  # should be pos w recurrence too
+        I_fast_syn = (self.self_recurrence_mask * self.W_fast).matmul(self.s_fast)
+        I_syn = (self.self_recurrence_mask * self.W_syn).matmul((self.s))
+        # except RuntimeError as re:
+        #     print('re')
 
         I_tot = I_syn + I_fast_syn + I_in + self.I_o
         # I_tot = I_syn + I_fast_syn + I_in
