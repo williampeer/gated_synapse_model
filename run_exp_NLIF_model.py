@@ -9,7 +9,6 @@ import IO
 import plot
 import util
 from Models import NLIF_transposed
-from Models import NLIF
 from metrics import original_loss
 
 torch.autograd.set_detect_anomaly(True)
@@ -23,14 +22,16 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.001
-    exp_type = ExpType.AutoEncoding
-    # exp_type = ExpType.GeneralPredictiveEncoding
+    learn_rate = 0.02
+    # exp_type = ExpType.AutoEncoding
+    exp_type = ExpType.GeneralPredictiveEncoding
     num_seeds = 1
     N = 30
-    train_iters = 200
+    train_iters = 50
     plot_modulo = 10
-    lambda_regularize = 0.1 / N
+    # lambda_regularize = 0.1 / N
+    # lambda_regularize = 0.01 / N
+    lambda_regularize = 0.01
     Delta = 1.
     # Delta = 0.1 / N
     period_ms = 40
@@ -68,6 +69,7 @@ def main(argv):
 
         # snn = Models.NLIF.NLIF(N=N)
         snn = NLIF_transposed.NLIF(N=N)
+        # snn = snn.double()
         print('- SNN test for class {} -'.format(snn.__class__.__name__))
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
@@ -124,6 +126,7 @@ def main(argv):
 
             # for p_i, param in enumerate(list(snn.parameters())):
             #     print('grad for param #{}: {}'.format(p_i, param.grad))
+            print('W_fast.grad: {}'.format(snn.W_fast.grad))
 
             optimiser.step()
 

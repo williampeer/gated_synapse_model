@@ -121,7 +121,7 @@ def plot_heatmap(heat_mat, axes, exp_type, uuid, fname):
     a = plt.imshow(heat_mat, cmap="PuOr", vmin=-1, vmax=1)
     cbar = plt.colorbar(a)
     # cbar.set_label("correlation coeff.")
-    plt.xticks(np.arange(0, len(heat_mat)))
+    plt.xticks(np.arange(0, len(heat_mat), 5))
     plt.yticks(np.arange(0, len(heat_mat)))
     plt.ylabel(axes[0])
     plt.xlabel(axes[1])
