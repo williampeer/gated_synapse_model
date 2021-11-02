@@ -27,9 +27,9 @@ class NLIF(nn.Module):
 
         rand_ws_syn = (w_mean - w_var) + 2 * w_var * torch.randn((self.N, self.N))
         # rand_ws_syn = rand_ws_syn * self.self_recurrence_mask
-        rand_ws_syn = rand_ws_syn
+        rand_ws_syn = self.self_recurrence_mask * rand_ws_syn
         rand_ws_fast = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, self.N))
-        rand_ws_fast = rand_ws_fast * self.self_recurrence_mask
+        rand_ws_fast = self.self_recurrence_mask * rand_ws_fast
         # rand_ws_fast = torch.zeros((self.N, self.N))
         rand_ws_in = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, 2))
         I_o = 0.1 * torch.randn((N,)).clip(-1., 1.).double()
