@@ -18,7 +18,7 @@ def feed_inputs_sequentially_return_tuple(model, inputs):
 # low-pass filter
 def auto_encoder_task_input_output(t=2400, period_ms=50, tau_filter=100., Delta = 1., A_in = 0.):
     period_rads = (3.141592 / period_ms)
-    input = Delta * A_in * torch.sin(period_rads * torch.reshape(torch.arange(0, t), (t, 1)))
+    input = Delta * A_in * torch.sin(period_rads * torch.reshape(torch.arange(0, t).double(), (t, 1)))
     out_dot = input[0,:]/tau_filter
     out_dot = torch.vstack([out_dot, out_dot])
     for t_i in range(t-1):
@@ -34,7 +34,7 @@ def general_predictive_encoding_task_input_output(t=2400, period_ms=50, tau_filt
                                                   A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])):
     period_rads = (3.141592 / period_ms)
     assert A_mat is not None and len(A_mat.shape) == 2, "A_mat must be defined and not none."
-    input = Delta * A_in * torch.sin(period_rads * torch.reshape(torch.arange(0, t), (t, 1)))
+    input = Delta * A_in * torch.sin(period_rads * torch.reshape(torch.arange(0, t).double(), (t, 1)))
     outputs = (input[0,:])/tau_filter
     outputs = torch.vstack([outputs, outputs])
     for t_i in range(t-1):

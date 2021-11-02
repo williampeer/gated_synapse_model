@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
-from torch import FloatTensor as FT
-from torch import tensor as T
+from torch import DoubleTensor as DT
 
-from Models.TORCH_CUSTOM import static_clamp_for, static_clamp_for_matrix
+from Models.TORCH_CUSTOM import static_clamp_for_matrix, static_clamp_for
 
 
 class NLIF(nn.Module):
@@ -19,11 +18,12 @@ class NLIF(nn.Module):
         __constants__ = ['N', 'norm_R_const', 'self_recurrence_mask']
         self.N = N
 
-        self.v = torch.zeros((self.N,))
-        self.s = torch.zeros((self.N,))
-        self.s_fast = torch.zeros_like(self.v)  # syn. conductance
+        self.v = torch.zeros((self.N,), dtype=torch.double)
+        self.s = torch.zeros((self.N,), dtype=torch.double)
+        self.s_fast = torch.zeros_like(self.v, dtype=torch.double)
 
-        self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)
+        self.self_recurrence_mask = torch.ones((self.N, self.N), dtype=torch.double) - torch.eye(self.N, self.N, dtype=torch.double)
+        self.self_recurrence_mask = self.self_recurrence_mask.double()
 
         rand_ws_syn = (w_mean - w_var) + 2 * w_var * torch.randn((self.N, self.N))
         # rand_ws_syn = rand_ws_syn * self.self_recurrence_mask
@@ -32,22 +32,20 @@ class NLIF(nn.Module):
         rand_ws_fast = rand_ws_fast * self.self_recurrence_mask
         # rand_ws_fast = torch.zeros((self.N, self.N))
         rand_ws_in = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, 2))
-        I_o = 0.2 * torch.randn((N,)).clip(-1., 1.)
-        # nt = T(neuron_types).float()
-        # self.neuron_types = torch.transpose((nt * torch.ones((self.N, self.N))), 0, 1)
+        I_o = 0.1 * torch.randn((N,)).clip(-1., 1.).double()
 
         self.w_lim = 2.
-        self.W_syn = nn.Parameter(FT(rand_ws_syn.clamp(-self.w_lim, self.w_lim)), requires_grad=True)
-        self.W_fast = nn.Parameter(FT(rand_ws_fast.clamp(-self.w_lim, self.w_lim)), requires_grad=True)
-        self.W_in = nn.Parameter(FT(rand_ws_in.clamp(-self.w_lim, self.w_lim)), requires_grad=True)  # "U" - input weights
-        self.O = nn.Parameter(torch.randn((2, self.N)).clamp(-self.w_lim, self.w_lim), requires_grad=True)  # linear readout
-        # self.I_o = nn.Parameter(FT(I_o), requires_grad=True)  # tonic input current
-        self.I_o = FT(torch.zeros((self.N,)))  # tonic input current
+        self.W_syn = nn.Parameter(DT(rand_ws_syn.clamp(-self.w_lim, self.w_lim).double()), requires_grad=True)
+        self.W_fast = nn.Parameter(DT(rand_ws_fast.clamp(-self.w_lim, self.w_lim).double()), requires_grad=True)
+        self.W_in = nn.Parameter(DT(rand_ws_in.clamp(-self.w_lim, self.w_lim).double()), requires_grad=True)  # "U" - input weights
+        self.O = nn.Parameter(DT(torch.randn((2, self.N)).clamp(-self.w_lim, self.w_lim).double()), requires_grad=True)  # linear readout
+        self.I_o = nn.Parameter(DT(I_o), requires_grad=True)  # tonic input current
+        # self.I_o = DT(torch.zeros((self.N,)))  # tonic input current
 
-        self.v_reset = 0.
-        self.tau_m = 10.
-        self.tau_s = 10.
-        self.tau_s_fast = 1.
+        self.v_reset = torch.DoubleTensor([0.])[0]
+        self.tau_m = torch.DoubleTensor([10.])[0]
+        self.tau_s = torch.DoubleTensor([10.])[0]
+        self.tau_s_fast = torch.DoubleTensor([1.])[0]
         # self.Delta = 0.1
 
         self.register_backward_clamp_hooks()
@@ -58,7 +56,7 @@ class NLIF(nn.Module):
         self.W_in.register_hook(lambda grad: static_clamp_for_matrix(grad, -self.w_lim, self.w_lim, self.W_in))
         self.O.register_hook(lambda grad: static_clamp_for_matrix(grad, -self.w_lim, self.w_lim, self.O))
 
-        # self.I_o.register_hook(lambda grad: static_clamp_for(grad, -1., 1., self.I_o))
+        self.I_o.register_hook(lambda grad: static_clamp_for(grad, -1., 1., self.I_o))
 
     def get_parameters(self):
         params_list = {}
@@ -79,9 +77,9 @@ class NLIF(nn.Module):
             p.grad = None
         self.reset_hidden_state()
 
-        self.v = torch.zeros((self.N,))
-        self.s = torch.zeros_like(self.v)  # syn. conductance
-        self.s_fast = torch.zeros_like(self.v)  # syn. conductance
+        self.v = torch.zeros((self.N,), dtype=torch.double)
+        self.s = torch.zeros_like(self.v, dtype=torch.double)
+        self.s_fast = torch.zeros_like(self.v, dtype=torch.double)
 
     def reset_hidden_state(self):
         self.v = self.v.clone().detach()
@@ -92,9 +90,12 @@ class NLIF(nn.Module):
         return self.__class__.__name__
 
     def forward(self, x_in):
-        I_syn = (self.W_syn).matmul((self.s))  # should be pos w recurrence too
-        I_fast_syn = (self.W_fast * self.self_recurrence_mask).matmul(self.s_fast)
         I_in = self.W_in.matmul(x_in)
+        try:
+            I_fast_syn = (self.W_fast * self.self_recurrence_mask).matmul(self.s_fast)
+        except RuntimeError as re:
+            print('re')
+        I_syn = (self.W_syn).matmul((self.s))  # should be pos w recurrence too
 
         I_tot = I_syn + I_fast_syn + I_in + self.I_o
         # I_tot = I_syn + I_fast_syn + I_in
@@ -110,8 +111,8 @@ class NLIF(nn.Module):
 
         spiked_pos = (v_next >= 1.)
         spiked_neg = (v_next <= -1.)
-        spiked = (spiked_pos + spiked_neg).float()
-        not_spiked = torch.ones_like(spiked)-spiked
+        spiked = (spiked_pos + spiked_neg).double()
+        not_spiked = torch.ones_like(spiked, dtype=torch.double)-spiked
 
         # self.s_fast = spiked_pos - spiked_neg + not_spiked * (-self.s_fast)  # / tau_s_fast = 1.
         self.v = not_spiked * v_next  # + spiked * 0.

@@ -89,7 +89,7 @@ def main(argv):
         # spikes, readouts = feed_inputs_sequentially_return_tuple(snn, inputs)
         # print('sum model outputs: {}'.format(readouts.sum()))
 
-        spikes_zero_input, readouts_zero_input, v_zero_in, s_zero_in, s_fast_zero_in = util.feed_inputs_sequentially_return_tuple(snn, torch.zeros((t,2)))
+        spikes_zero_input, readouts_zero_input, v_zero_in, s_zero_in, s_fast_zero_in = util.feed_inputs_sequentially_return_tuple(snn, torch.zeros((t,2), dtype=torch.double))
         print('sum model outputs no input: {}'.format(readouts_zero_input.sum()))
         plot.plot_neuron(readouts_zero_input.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid=uuid, exp_type=exp_type.name, fname='test_plot_readouts_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
         plot.plot_neuron(v_zero_in.detach().numpy(), ylabel='v', title='Test plot vs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_v_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
