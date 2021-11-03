@@ -23,7 +23,7 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.02
+    learn_rate = 0.01
     exp_type = ExpType.AutoEncoding
     # exp_type = ExpType.GeneralPredictiveEncoding
     num_seeds = 1
@@ -82,10 +82,17 @@ def main(argv):
             A_in = torch.tensor([-1., 0.5])
             A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])
         if exp_type is ExpType.AutoEncoding:
-            period_ms = torch.tensor([period_ms, period_ms/2])
-            phase_shifts = torch.tensor([0., 0.1])
-            inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
-                                                                         Delta=Delta, A_in=A_in, phase_shifts=phase_shifts)
+            period_ms = torch.tensor([period_ms, period_ms/2, period_ms/3, period_ms/4])
+            phase_shifts_1 = torch.tensor([0., 0.1, 0.2, 0.3])
+            phase_shifts_2 = phase_shifts_1 + 3.141592/4
+            # inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
+            #                                                              Delta=Delta, A_in=A_in, phase_shifts=phase_shifts)
+            # inputs_1 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=phase_shifts_1)
+            # inputs_2 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=phase_shifts_2)
+            inputs_1 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
+            inputs_2 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
+            inputs = torch.vstack([inputs_1, inputs_2]).T
+            target_outputs = util.auto_encode_input(inputs, tau_filter=tau_filter)
         elif exp_type is ExpType.GeneralPredictiveEncoding:
             inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
                                                                                         Delta=Delta, A_in=A_in, A_mat=A_mat)
@@ -127,7 +134,7 @@ def main(argv):
 
             # for p_i, param in enumerate(list(snn.parameters())):
             #     print('grad for param #{}: {}'.format(p_i, param.grad))
-            print('W_fast.grad: {}'.format(snn.W_fast.grad))
+            # print('W_fast.grad: {}'.format(snn.W_fast.grad))
 
             optimiser.step()
 
@@ -173,9 +180,9 @@ def main(argv):
             return new_mat
 
         plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W')
-        plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_fast')
-        plot.plot_heatmap((- snn.W_in.matmul(snn.O)).data, ['-UO column', '-UO row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_minUO')
-        plot.plot_heatmap((- snn.W_in.matmul(snn.O)).T.data, ['-UO.T column', '-UO.T row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_minUO_T')
+        plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_compare_W_fast')
+        plot.plot_heatmap((- snn.W_in.matmul(snn.O)).data, ['-UO column', '-UO row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_compare_minUO')
+        plot.plot_heatmap((- snn.W_in.matmul(snn.O)).T.data, ['-UO.T column', '-UO.T row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_y_minUO_T')
 
         sorted_W_fast = sort_matrix_wrt_weighted_centers(snn.W_fast)
         sorted_minUO = sort_matrix_wrt_weighted_centers(-snn.W_in.matmul(snn.O))

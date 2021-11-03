@@ -18,7 +18,8 @@ def feed_inputs_sequentially_return_tuple(model, inputs):
 # low-pass filter
 def auto_encoder_task_input_output(t=2400, period_ms=50, tau_filter=20., Delta = 1., A_in = 0., phase_shifts=0.):
     period_rads = (3.141592 / period_ms)
-    input = Delta * A_in * torch.sin((period_rads + phase_shifts) * torch.reshape(torch.arange(0, t), (t, 1)))
+    input = Delta * A_in * torch.sin(phase_shifts + period_rads * torch.reshape(torch.arange(0, t), (t, 1)))
+    # input = Delta * A_in * torch.sin((period_rads + phase_shifts) * torch.reshape(torch.arange(0, t), (t, 1)) * torch.rand((t, 1)).clip(0., 1.))
     out_dot = input[0,:]/tau_filter
     out_dot = torch.vstack([out_dot, out_dot])
     for t_i in range(t-1):
@@ -27,6 +28,21 @@ def auto_encoder_task_input_output(t=2400, period_ms=50, tau_filter=20., Delta =
         out_dot = torch.vstack([out_dot, out_next])
     return (input, out_dot[1:,:])
 
+
+# high-dim. arbitrary coeffs and shifts.
+def generate_sum_of_sinusoids_vector(t=120, period_ms=40, A_coeff = torch.rand((4,)), phase_shifts=torch.rand((4,))):
+    period_rads = (3.141592 / period_ms)
+    return (A_coeff * torch.sin(phase_shifts + period_rads * torch.reshape(torch.arange(0, t), (t, 1)))).sum(dim=1)
+
+# low-pass filter
+def auto_encode_input(inputs, tau_filter=20., A_lin_comb_mat = 1):
+    outputs = inputs[0,:]/tau_filter
+    outputs = torch.vstack([outputs, outputs])
+    for t_i in range(inputs.shape[0]-1):
+        dv_out = (-outputs[-1, :] + inputs[t_i, :]) / tau_filter
+        out_next = outputs[-1, :] + dv_out
+        outputs = torch.vstack([outputs, out_next])
+    return outputs[1:,:]
 
 # Linear dynamic relationships between desired I-O signals.
 def general_predictive_encoding_task_input_output(t=2400, period_ms=50, tau_filter=20., Delta = 1.,
