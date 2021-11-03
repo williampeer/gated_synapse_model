@@ -5,14 +5,14 @@ from torch import DoubleTensor as DT
 from Models.TORCH_CUSTOM import static_clamp_for_matrix, static_clamp_for
 
 
-class NLIF(nn.Module):
+class NLIF_double_precision(nn.Module):
     # W, U, I_o, O
     free_parameters = ['w', 'W_in', 'I_o', 'O']  # 0,2,3,5,8
     # parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
     parameter_init_intervals = {'w': [0., 1.], 'W_in': [0., 1.], 'I_o': [0.2, 0.6], 'O': [0.5, 2.]}
 
     def __init__(self, N=30, w_mean=0., w_var=0.4):
-        super(NLIF, self).__init__()
+        super(NLIF_double_precision, self).__init__()
         # self.device = device
 
         __constants__ = ['N', 'norm_R_const', 'self_recurrence_mask']

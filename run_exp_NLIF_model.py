@@ -8,7 +8,8 @@ import torch
 import IO
 import plot
 import util
-from Models import NLIF_transposed
+from Models.NLIF import NLIF
+from Models.NLIF_double_precision import NLIF_double_precision
 from metrics import original_loss
 
 torch.autograd.set_detect_anomaly(True)
@@ -22,23 +23,23 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.01
+    learn_rate = 0.02
     exp_type = ExpType.AutoEncoding
     # exp_type = ExpType.GeneralPredictiveEncoding
     num_seeds = 1
     N = 30
     train_iters = 100
     plot_modulo = 10
-    # lambda_regularize = 0.1 / N
-    lambda_regularize = 0.01 / N
+    lambda_regularize = 0.1 / N
+    # lambda_regularize = 0.01 / N
     # lambda_regularize = 0.01
     Delta = 1.
     # Delta = 0.1 / N
     period_ms = 40
-    t = 1200
+    t = 120
     tau_filter = 50.
-
-    # Delta = 0.1/snn.N
+    # optimiser = torch.optim.SGD
+    optimiser = torch.optim.Adam
 
     opts = [opt for opt in argv if opt.startswith("-")]
     args = [arg for arg in argv if not arg.startswith("-")]
@@ -68,19 +69,24 @@ def main(argv):
         np.random.seed(random_seed)
 
         # snn = Models.NLIF.NLIF(N=N)
-        snn = NLIF_transposed.NLIF(N=N)
-        # snn = snn.double()
+        # snn = NLIF_double_precision(N=N)
+        snn = NLIF(N=N)
         print('- SNN test for class {} -'.format(snn.__class__.__name__))
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
 
-        A_in = torch.tensor([-1., 0.5])
+        if snn.__class__ is NLIF_double_precision:
+            A_in = torch.tensor([-1., 0.5], dtype=torch.double)
+            A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]], dtype=torch.double)
+        else:
+            A_in = torch.tensor([-1., 0.5])
+            A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])
         if exp_type is ExpType.AutoEncoding:
             period_ms = torch.tensor([period_ms, period_ms/2])
+            phase_shifts = torch.tensor([0., 0.1])
             inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
-                                                                         Delta=Delta, A_in=A_in)
+                                                                         Delta=Delta, A_in=A_in, phase_shifts=phase_shifts)
         elif exp_type is ExpType.GeneralPredictiveEncoding:
-            A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])
             inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
                                                                                         Delta=Delta, A_in=A_in, A_mat=A_mat)
         else:
@@ -88,26 +94,21 @@ def main(argv):
 
         print('#inputs sum: {}'.format(inputs.sum()))
         print('#targets sum: {}'.format(target_outputs.sum()))
-        # spikes, readouts = feed_inputs_sequentially_return_tuple(snn, inputs)
-        # print('sum model outputs: {}'.format(readouts.sum()))
 
-        spikes_zero_input, readouts_zero_input, v_zero_in, s_zero_in, s_fast_zero_in = util.feed_inputs_sequentially_return_tuple(snn, torch.zeros((t,2), dtype=torch.double))
+        if snn.__class__ is NLIF_double_precision:
+            spikes_zero_input, readouts_zero_input, v_zero_in, s_zero_in, s_fast_zero_in = util.feed_inputs_sequentially_return_tuple(snn, torch.zeros((t,2), dtype=torch.double))
+        else:
+            spikes_zero_input, readouts_zero_input, v_zero_in, s_zero_in, s_fast_zero_in = util.feed_inputs_sequentially_return_tuple(snn, torch.zeros((t,2)))
         print('sum model outputs no input: {}'.format(readouts_zero_input.sum()))
         plot.plot_neuron(readouts_zero_input.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid=uuid, exp_type=exp_type.name, fname='test_plot_readouts_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
         plot.plot_neuron(v_zero_in.detach().numpy(), ylabel='v', title='Test plot vs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_v_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
         plot.plot_spike_train(spikes_zero_input, title='Test spikes', uuid=uuid, exp_type=exp_type.name, fname='test_plot_spikes_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
 
-        # loss = original_loss(readouts, desired_output=target_outputs)
-        # print('loss: {}'.format(loss))
-
         plot.plot_neuron(inputs.detach().numpy(), ylabel='input current', title='Test plot inputs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_inputs_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
         plot.plot_neuron(target_outputs.detach().numpy(), ylabel='target output', title='Test plot target outputs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_itargets_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
-        # plot.plot_neuron(readouts.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid=uuid, fname='test_plot_readouts_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
-        # plot.plot_spike_train(spikes, title='Test spikes', uuid=uuid, fname='test_plot_spikes_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
 
         optim_params = list(snn.parameters())
-        # optimiser = torch.optim.SGD(optim_params, lr=learn_rate)
-        optimiser = torch.optim.Adam(optim_params, lr=learn_rate)
+        optimiser = optimiser(optim_params, lr=learn_rate)
 
         losses = []
         for i in range(train_iters):
