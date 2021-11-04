@@ -35,11 +35,20 @@ def generate_sum_of_sinusoids_vector(t=120, period_ms=40, A_coeff = torch.rand((
     return (A_coeff * torch.sin(phase_shifts + period_rads * torch.reshape(torch.arange(0, t), (t, 1)))).sum(dim=1)
 
 # low-pass filter
-def auto_encode_input(inputs, tau_filter=20., A_lin_comb_mat = 1):
+def auto_encode_input(inputs, tau_filter=20.):
     outputs = inputs[0,:]/tau_filter
     outputs = torch.vstack([outputs, outputs])
     for t_i in range(inputs.shape[0]-1):
         dv_out = (-outputs[-1, :] + inputs[t_i, :]) / tau_filter
+        out_next = outputs[-1, :] + dv_out
+        outputs = torch.vstack([outputs, out_next])
+    return outputs[1:,:]
+
+def general_encoding_task(inputs, tau_filter=20., A_lin_comb_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])):
+    outputs = inputs[0,:]/tau_filter
+    outputs = torch.vstack([outputs, outputs])
+    for t_i in range(inputs.shape[0]-1):
+        dv_out = (-outputs[-1, :] + inputs[t_i, :] + A_lin_comb_mat.matmul(outputs[-1,:])) / tau_filter
         out_next = outputs[-1, :] + dv_out
         outputs = torch.vstack([outputs, out_next])
     return outputs[1:,:]

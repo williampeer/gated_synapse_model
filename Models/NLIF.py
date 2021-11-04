@@ -76,9 +76,9 @@ class NLIF(nn.Module):
             p.grad = None
         self.reset_hidden_state()
 
-        self.v = torch.zeros((self.N,))
-        self.s = torch.zeros_like(self.v)
-        self.s_fast = torch.zeros_like(self.v)
+        # self.v = torch.zeros((self.N,))
+        # self.s = torch.zeros_like(self.v)
+        # self.s_fast = torch.zeros_like(self.v)
 
     def reset_hidden_state(self):
         self.v = self.v.clone().detach()

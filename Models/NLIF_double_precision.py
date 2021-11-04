@@ -77,9 +77,9 @@ class NLIF_double_precision(nn.Module):
             p.grad = None
         self.reset_hidden_state()
 
-        self.v = torch.zeros((self.N,), dtype=torch.double)
-        self.s = torch.zeros_like(self.v, dtype=torch.double)
-        self.s_fast = torch.zeros_like(self.v, dtype=torch.double)
+        # self.v = torch.zeros((self.N,), dtype=torch.double)
+        # self.s = torch.zeros_like(self.v, dtype=torch.double)
+        # self.s_fast = torch.zeros_like(self.v, dtype=torch.double)
 
     def reset_hidden_state(self):
         self.v = self.v.clone().detach()
