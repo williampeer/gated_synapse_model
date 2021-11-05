@@ -89,8 +89,8 @@ def main(argv):
             #                                                              Delta=Delta, A_in=A_in, phase_shifts=phase_shifts)
             # inputs_1 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=phase_shifts_1)
             # inputs_2 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=phase_shifts_2)
-            inputs_1 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
-            inputs_2 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
+            inputs_1 = util.generate_sum_of_sinusoids(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
+            inputs_2 = util.generate_sum_of_sinusoids(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
             inputs = torch.vstack([inputs_1, inputs_2]).T
             target_outputs = util.auto_encode_input(inputs, tau_filter=tau_filter)
         elif exp_type is ExpType.GeneralPredictiveEncoding:

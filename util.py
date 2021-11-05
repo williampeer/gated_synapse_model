@@ -1,3 +1,4 @@
+import numpy
 import torch
 
 
@@ -30,9 +31,15 @@ def auto_encoder_task_input_output(t=2400, period_ms=50, tau_filter=20., Delta =
 
 
 # high-dim. arbitrary coeffs and shifts.
-def generate_sum_of_sinusoids_vector(t=120, period_ms=40, A_coeff = torch.rand((4,)), phase_shifts=torch.rand((4,))):
-    period_rads = (3.141592 / period_ms)
+def generate_sum_of_sinusoids(t=120, period_ms=40, A_coeff = torch.rand((4,)), phase_shifts=torch.rand((4,))):
+    period_rads = (numpy.pi / period_ms)
     return (A_coeff * torch.sin(phase_shifts + period_rads * torch.reshape(torch.arange(0, t), (t, 1)))).sum(dim=1)
+
+def white_noise_sum_of_sinusoids(t=120, period_ms=40, A_coeff = torch.rand((4,)), phase_shifts=torch.rand((4,))):
+    period_rads = (numpy.pi / period_ms)
+    white_noise = torch.rand((t, 1))
+    arange = torch.reshape(torch.arange(0, t), (t, 1))
+    return (A_coeff * torch.sin(phase_shifts + period_rads * (white_noise+arange))).sum(dim=1)
 
 # low-pass filter
 def auto_encode_input(inputs, tau_filter=20.):
@@ -44,7 +51,7 @@ def auto_encode_input(inputs, tau_filter=20.):
         outputs = torch.vstack([outputs, out_next])
     return outputs[1:,:]
 
-def general_encoding_task(inputs, tau_filter=20., A_lin_comb_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])):
+def general_encoding_task(inputs, tau_filter=20., A_lin_comb_mat = torch.tensor([[-0.7, 0.36], [1.1, -2.3]])):
     outputs = inputs[0,:]/tau_filter
     outputs = torch.vstack([outputs, outputs])
     for t_i in range(inputs.shape[0]-1):
@@ -57,7 +64,7 @@ def general_encoding_task(inputs, tau_filter=20., A_lin_comb_mat = torch.tensor(
 def general_predictive_encoding_task_input_output(t=2400, period_ms=50, tau_filter=20., Delta = 1.,
                                                   A_in=torch.tensor([1.0, 0.5]),
                                                   A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])):
-    period_rads = (3.141592 / period_ms)
+    period_rads = (numpy.pi / period_ms)
     assert A_mat is not None and len(A_mat.shape) == 2, "A_mat must be defined and not none."
     input = Delta * A_in * torch.sin(period_rads * torch.reshape(torch.arange(0, t), (t, 1)))
     outputs = (input[0,:])/tau_filter
