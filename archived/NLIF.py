@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 from torch import FloatTensor as FT
+from torch import tensor as T
 
-from Models.TORCH_CUSTOM import static_clamp_for_matrix, static_clamp_for
+from Models.TORCH_CUSTOM import static_clamp_for, static_clamp_for_matrix
 
 
 class NLIF(nn.Module):
@@ -11,7 +12,7 @@ class NLIF(nn.Module):
     # parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
     parameter_init_intervals = {'w': [0., 1.], 'W_in': [0., 1.], 'I_o': [0.2, 0.6], 'O': [0.5, 2.]}
 
-    def __init__(self, N=30, w_mean=0., w_var=0.4):
+    def __init__(self, N=30, w_mean=0.05, w_var=0.2):
         super(NLIF, self).__init__()
         # self.device = device
 
@@ -20,41 +21,39 @@ class NLIF(nn.Module):
 
         self.v = torch.zeros((self.N,))
         self.s = torch.zeros((self.N,))
-        self.s_fast = torch.zeros_like(self.v)
+        self.s_fast = torch.zeros_like(self.v)  # syn. conductance
 
         self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)
 
         rand_ws_syn = (w_mean - w_var) + 2 * w_var * torch.randn((self.N, self.N))
-        # rand_ws_syn = rand_ws_syn * self.self_recurrence_mask
-        rand_ws_syn = self.self_recurrence_mask * rand_ws_syn
+        rand_ws_syn = rand_ws_syn * self.self_recurrence_mask
         rand_ws_fast = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, self.N))
-        rand_ws_fast = self.self_recurrence_mask * rand_ws_fast
+        rand_ws_fast = rand_ws_fast * self.self_recurrence_mask
         # rand_ws_fast = torch.zeros((self.N, self.N))
-        rand_ws_in = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, 2))
-        I_o = 0.1 * torch.randn((N,)).clip(-1., 1.)
+        rand_ws_in = (w_mean - w_var) + (2) * w_var * torch.randn((2, self.N))
+        I_o = 0.01 * torch.ones((N,))
+        # nt = T(neuron_types).float()
+        # self.neuron_types = torch.transpose((nt * torch.ones((self.N, self.N))), 0, 1)
 
-        self.w_lim = 2.
-        self.W_syn = nn.Parameter(FT(rand_ws_syn.clamp(-self.w_lim, self.w_lim)), requires_grad=True)
-        self.W_fast = nn.Parameter(FT(rand_ws_fast.clamp(-self.w_lim, self.w_lim)), requires_grad=True)
-        self.W_in = nn.Parameter(FT(rand_ws_in.clamp(-self.w_lim, self.w_lim)), requires_grad=True)  # "U" - input weights
-        self.O = nn.Parameter(FT(torch.randn((2, self.N)).clamp(-self.w_lim, self.w_lim)), requires_grad=True)  # linear readout
+        self.W_syn = nn.Parameter(FT(rand_ws_syn.clamp(-1., 1.)), requires_grad=True)
+        self.W_fast = nn.Parameter(FT(rand_ws_fast.clamp(-1., 1.)), requires_grad=True)
+        self.W_in = nn.Parameter(FT(rand_ws_in.clamp(-1., 1.)), requires_grad=True)  # "U" - input weights
         self.I_o = nn.Parameter(FT(I_o), requires_grad=True)  # tonic input current
-        # self.I_o = FT(torch.zeros((self.N,)))  # tonic input current
+        self.O = nn.Parameter(torch.randn((N, 2)), requires_grad=True)  # linear readout
 
         self.v_reset = 0.
         self.tau_m = 10.
         self.tau_s = 10.
-        self.tau_s_fast = 1.
+        self.tau_s_fast = 1.  # TODO: Verify whether it's 1 or 2.
         # self.Delta = 0.1
 
         self.register_backward_clamp_hooks()
 
     def register_backward_clamp_hooks(self):
-        self.W_syn.register_hook(lambda grad: static_clamp_for_matrix(grad, -self.w_lim, self.w_lim, self.W_syn))
-        self.W_fast.register_hook(lambda grad: static_clamp_for_matrix(grad, -self.w_lim, self.w_lim, self.W_fast))
-        self.W_in.register_hook(lambda grad: static_clamp_for_matrix(grad, -self.w_lim, self.w_lim, self.W_in))
-        self.O.register_hook(lambda grad: static_clamp_for_matrix(grad, -self.w_lim, self.w_lim, self.O))
-
+        self.W_syn.register_hook(lambda grad: static_clamp_for_matrix(grad, -1., 1., self.W_syn))
+        self.W_fast.register_hook(lambda grad: static_clamp_for_matrix(grad, -1., 1., self.W_fast))
+        self.W_in.register_hook(lambda grad: static_clamp_for_matrix(grad, -1., 1., self.W_in))
+        self.O.register_hook(lambda grad: static_clamp_for_matrix(grad, -1., 1., self.O))
         self.I_o.register_hook(lambda grad: static_clamp_for(grad, -1., 1., self.I_o))
 
     def get_parameters(self):
@@ -76,9 +75,9 @@ class NLIF(nn.Module):
             p.grad = None
         self.reset_hidden_state()
 
-        # self.v = torch.zeros((self.N,))
-        # self.s = torch.zeros_like(self.v)
-        # self.s_fast = torch.zeros_like(self.v)
+        self.v = torch.zeros((self.N,))
+        self.s = torch.zeros_like(self.v)  # syn. conductance
+        self.s_fast = torch.zeros_like(self.v)  # syn. conductance
 
     def reset_hidden_state(self):
         self.v = self.v.clone().detach()
@@ -89,12 +88,10 @@ class NLIF(nn.Module):
         return self.__class__.__name__
 
     def forward(self, x_in):
-        # try:
-        I_in = self.W_in.matmul(x_in)
-        I_fast_syn = (self.self_recurrence_mask * self.W_fast).matmul(self.s_fast)
-        I_syn = (self.self_recurrence_mask * self.W_syn).matmul((self.s))
-        # except RuntimeError as re:
-        #     print('re')
+        # (WIP) Correct NIF formulation
+        I_syn = (self.s).matmul(self.W_syn * self.self_recurrence_mask)  # should be pos w recurrence too
+        I_fast_syn = self.s_fast.matmul(self.W_fast * self.self_recurrence_mask)
+        I_in = x_in.matmul(self.W_in)
 
         I_tot = I_syn + I_fast_syn + I_in + self.I_o
         # I_tot = I_syn + I_fast_syn + I_in
@@ -102,7 +99,7 @@ class NLIF(nn.Module):
         v_next = torch.add(self.v, dv)
 
         gating = v_next.clamp(0., 1.)
-        ds = (gating * dv.clamp(-1., 1.) - self.s) / self.tau_s
+        ds = (gating * dv.clamp(-1., 1.) - self.s) / self.tau_s  # TODO: ensure integrals = 1
         self.s = self.s + ds
         ds_fast = (gating * dv.clamp(-1., 1.) - self.s_fast) / self.tau_s_fast
         # ds_fast = (gating * dv.clamp(-1., 1.))
@@ -116,8 +113,8 @@ class NLIF(nn.Module):
         # self.s_fast = spiked_pos - spiked_neg + not_spiked * (-self.s_fast)  # / tau_s_fast = 1.
         self.v = not_spiked * v_next  # + spiked * 0.
 
-        readout = self.O.matmul(self.s)
+        readout = self.s.matmul(self.O)
         # return (spiked_pos + spiked_neg), readout
-        return spiked, readout, self.v, self.s, self.s_fast
+        return spiked, readout, self.v, self.s
         # return spiked_pos, readout, I_in, I_syn
 
