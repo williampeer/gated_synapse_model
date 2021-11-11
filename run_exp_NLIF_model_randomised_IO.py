@@ -23,16 +23,17 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.004
-    # exp_type = ExpType.AutoEncoding
-    exp_type = ExpType.GeneralPredictiveEncoding
+    learn_rate = 0.015
+    exp_type = ExpType.AutoEncoding
+    # exp_type = ExpType.GeneralPredictiveEncoding
     random_seed_start = 7
     num_seeds = 2
     N = 30
-    train_iters = 1000
-    plot_modulo = 50
+    train_iters = 160
+    plot_modulo = 10
     # lambda_regularize = 0.01
-    lambda_regularize = 0.1 / N
+    # lambda_regularize = 0.1 / N
+    lambda_regularize = 0.4
     # lambda_regularize = 0.01 / N
     Delta = 1.
     # Delta = 0.1 / N
@@ -101,6 +102,9 @@ def main(argv):
         plot.plot_neuron(readouts_zero_input.detach().numpy(), ylabel='readouts', title='Test plot readouts', uuid=uuid, exp_type=exp_type.name, fname='test_plot_readouts_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
         plot.plot_neuron(v_zero_in.detach().numpy(), ylabel='v', title='Test plot vs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_v_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
         plot.plot_spike_train(spikes_zero_input, title='Test spikes', uuid=uuid, exp_type=exp_type.name, fname='test_plot_spikes_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
+
+        plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_initial')
+        plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_compare_W_fast_initial')
 
         val_inputs_1 = util.generate_sum_of_sinusoids(t=t, period_ms=period_ms, A_coeff=A_coeff_1, phase_shifts=phase_shifts_1)
         val_inputs_2 = util.generate_sum_of_sinusoids(t=t, period_ms=period_ms, A_coeff=A_coeff_2, phase_shifts=phase_shifts_2)
