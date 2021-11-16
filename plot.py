@@ -1,6 +1,10 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from matplotlib import cm
+from matplotlib.ticker import FormatStrFormatter
 from mpl_toolkits.mplot3d import Axes3D
 
 import IO
@@ -167,3 +171,103 @@ def plot_weights_dots(U, O, uuid, exp_type):
     full_path = './figures/' + exp_type + '/' + uuid + '/'
     plt.savefig(full_path+'_weights_O_U.png')
     plt.close()
+
+
+# ------------------------------
+def decompose_param_pair_trajectory_plot(param_2D, current_targets, name, path):
+    if os.path.exists(path + '.png'):
+        return
+
+    params_by_exp = np.array(param_2D).T
+    num_of_parameters = params_by_exp.shape[0]
+
+    plt.rcParams.update({'font.size': 8})
+    plt.locator_params(axis='x', nbins=2)
+
+    fig = plt.figure()
+    big_ax = fig.add_subplot(111)
+    big_ax.set_axis_on()
+    big_ax.grid(False)
+    name = name.replace('tau', '\\tau').replace('spike_threshold', '\\theta')
+    big_ax.set_title('Parameter trajectory for ${} \\times {}$'.format(name, name))
+    big_ax.set_xlabel('${}$'.format(name), labelpad=20)
+    big_ax.set_ylabel('${}$'.format(name), labelpad=34)
+    big_ax.set_xticks([])
+    big_ax.set_yticks([])
+    print('num_of_parameters: {}'.format(num_of_parameters))
+    axs = fig.subplots(nrows=num_of_parameters - 1, ncols=num_of_parameters - 1, sharex=True, sharey=True)
+    dot_msize = 5.0
+    if num_of_parameters == 2:
+        # if current_targets is not False:
+            # x_min = float('{}'.format(np.min(np.concatenate([params_by_exp[0], [current_targets[0]]]))))
+            # x_max = float('\n{}'.format(np.max(np.concatenate([params_by_exp[0], [current_targets[0]]]))))
+            # plt.xticks([x_min, x_max])
+
+        p_len = len(params_by_exp[0])
+        colors = cm.YlGn(np.linspace(0, 1, p_len))
+        for p_i in range(p_len):
+            plt.scatter(params_by_exp[0][p_i], params_by_exp[1][p_i], color=colors[p_i], marker='o', s=dot_msize)
+
+        if current_targets is not False:
+            plt.scatter(current_targets[0], current_targets[1], color='black', marker='x',
+                           s=2. * dot_msize)  # test 2*dot_msize
+    else:
+        [axi.set_axis_off() for axi in axs.ravel()]
+
+        for i in range(num_of_parameters):
+            for j in range(i+1, num_of_parameters):
+                cur_ax = axs[j - 1, i]
+                cur_ax.set_axis_on()
+                cur_ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+                # if current_targets is not False:
+                #     x_min = float('{}'.format(np.min(np.concatenate([params_by_exp[i], [current_targets[i]]]))))
+                #     x_max = float('\n{}'.format(np.max(np.concatenate([params_by_exp[i], [current_targets[i]]]))))
+                #     cur_ax.set_xticks([x_min, x_max])
+
+                # try:
+                p_len = len(params_by_exp[i])
+                colors = cm.YlGn(np.linspace(0, 1, p_len))
+                for p_i in range(p_len):
+                    cur_ax.scatter(params_by_exp[i][p_i], params_by_exp[j][p_i], color=colors[p_i], marker='o', s=dot_msize)
+
+                if current_targets is not False:
+                    cur_ax.scatter(current_targets[i], current_targets[j], color='black', marker='x', s=2.*dot_msize)  # test 2*dot_msize
+
+    if not path:
+        path = './figures/{}/{}/param_subplot_inferred_params_{}'.format('default', 'test_uuid', IO.dt_descriptor())
+    # plt.show()
+    fig.savefig(path + '.png')
+    plt.close()
+
+
+def plot_parameter_inference_trajectories_2d(param_means, target_params, param_names, exp_type, uuid, fname, custom_title):
+    full_path = './figures/' + exp_type + '/' + uuid + '/'
+    IO.makedir_if_not_exists('./figures/' + exp_type + '/')
+    IO.makedir_if_not_exists(full_path)
+
+    if not fname:
+        fname = 'new_inferred_params_{}'.format(IO.dt_descriptor())
+    path = full_path + fname
+
+    if not os.path.exists(path):
+        data = {'param_means': param_means, 'target_params': target_params, 'exp_type': exp_type, 'uuid': uuid, 'custom_title': custom_title, 'fname': fname}
+        IO.save_plot_data(data=data, uuid=uuid, plot_fn='plot_parameter_inference_trajectories_2d')
+
+        for p_i, p_k in enumerate(param_means):  # assuming a dict., for all parameter combinations
+            current_targets = False
+            if target_params is not False:
+                if p_k in target_params:
+                    current_targets = target_params[p_k]
+
+            cur_p = np.array(param_means[p_k])
+            name = '{}'.format(p_k)
+
+            # silently fail for 3D params (weights)
+            if len(cur_p.shape) == 2:
+                param_path = path+'_param_{}'.format(p_k)
+                if not os.path.exists(param_path) and not os.path.exists(param_path + '.png'):
+                    # decompose_param_pair_trajectory_plot(cur_p[:,:,:4], current_targets[:,:,:4], name=name, path=param_path)
+                    max_index = min(5, len(cur_p))
+                    if current_targets is not False:
+                        current_targets = current_targets[:max_index]
+                    decompose_param_pair_trajectory_plot(cur_p[:, :max_index], current_targets, name=name, path=param_path)

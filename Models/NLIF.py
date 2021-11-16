@@ -7,11 +7,11 @@ from Models.TORCH_CUSTOM import static_clamp_for_matrix, static_clamp_for
 
 class NLIF(nn.Module):
     # W, U, I_o, O
-    free_parameters = ['w', 'W_in', 'I_o', 'O']  # 0,2,3,5,8
+    free_parameters = ['W_in', 'I_o', 'O']  # 0,2,3,5,8
     # parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
-    parameter_init_intervals = {'w': [0., 1.], 'W_in': [0., 1.], 'I_o': [0.2, 0.6], 'O': [0.5, 2.]}
+    parameter_init_intervals = {'W_in': [0., 1.], 'I_o': [0.2, 0.6], 'O': [0.5, 2.]}
 
-    def __init__(self, N=30, w_mean=0., w_var=0.4):
+    def __init__(self, N=30, w_mean=0.1, w_var=0.4):
         super(NLIF, self).__init__()
         # self.device = device
 
@@ -20,7 +20,7 @@ class NLIF(nn.Module):
 
         self.v = torch.zeros((self.N,))
         self.s = torch.zeros((self.N,))
-        self.s_fast = torch.zeros_like(self.v)
+        self.s_fast = torch.zeros((self.N,))
 
         self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)
 
@@ -44,7 +44,7 @@ class NLIF(nn.Module):
         self.v_reset = 0.
         self.tau_m = 10.
         self.tau_s = 10.
-        self.tau_s_fast = 1.
+        self.tau_s_fast = 10.
         # self.Delta = 0.1
 
         self.register_backward_clamp_hooks()
@@ -61,9 +61,9 @@ class NLIF(nn.Module):
         params_list = {}
 
         params_list['W_syn'] = self.W_syn.data
-        params_list['W_syn_fast'] = self.W_syn_fast.data
+        params_list['W_fast'] = self.W_fast.data
         params_list['W_in'] = self.W_in.data
-        params_list['I_o'] = self.O.data
+        params_list['I_o'] = self.I_o.data
         params_list['O'] = self.O.data
 
         params_list['tau_m'] = self.tau_m
@@ -92,7 +92,7 @@ class NLIF(nn.Module):
         # try:
         I_in = self.W_in.matmul(x_in)
         I_fast_syn = (self.self_recurrence_mask * self.W_fast).matmul(self.s_fast)
-        I_syn = (self.self_recurrence_mask * self.W_syn).matmul((self.s))
+        I_syn = (self.self_recurrence_mask * self.W_syn).matmul(self.s)
         # except RuntimeError as re:
         #     print('re')
 

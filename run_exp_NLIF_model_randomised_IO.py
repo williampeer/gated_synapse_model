@@ -4,6 +4,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from torch.utils.tensorboard import SummaryWriter
 
 import IO
 import plot
@@ -23,25 +24,25 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.015
+    learn_rate = 0.3
     exp_type = ExpType.AutoEncoding
     # exp_type = ExpType.GeneralPredictiveEncoding
     random_seed_start = 7
     num_seeds = 2
     N = 30
-    train_iters = 160
+    train_iters = 200
     plot_modulo = 10
     # lambda_regularize = 0.01
-    # lambda_regularize = 0.1 / N
-    lambda_regularize = 0.4
+    lambda_regularize = 0.1 / N
+    # lambda_regularize = 0.4
     # lambda_regularize = 0.01 / N
     Delta = 1.
     # Delta = 0.1 / N
     period_ms = 40
     t = 120
     tau_filter = 50.
-    # optimiser = torch.optim.SGD
-    optimiser = torch.optim.Adam
+    optimiser = torch.optim.SGD
+    # optimiser = torch.optim.Adam
     DOUBLE_PRECISION = False
 
     opts = [opt for opt in argv if opt.startswith("-")]
@@ -77,6 +78,7 @@ def main(argv):
         print('- SNN test for class {} -'.format(snn.__class__.__name__))
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
+        writer = SummaryWriter('tensorboard_runs/' + uuid)
 
         period_ms = torch.tensor([period_ms, period_ms / 2, period_ms / 3, period_ms / 4])
 
@@ -122,6 +124,14 @@ def main(argv):
 
         losses = []
         val_losses = []
+        model_parameter_trajectories = {}
+        # cur_params = snn.state_dict()
+        # for p_i, key in enumerate(cur_params):
+        #     model_parameter_trajectories[key] = [cur_params[key].clone().detach().numpy()]
+        W_syn_list = []
+        W_fast_list = []
+        W_in_list = []
+        W_out_list = []
         for i in range(train_iters):
             print('training iter: {}..'.format(i))
             optimiser.zero_grad()
@@ -169,7 +179,17 @@ def main(argv):
             print('val_loss: {}'.format(val_loss))
             val_losses.append(val_loss.clone().detach().data)
 
-            losses.append(loss.clone().detach().data)
+            # cur_params = snn.state_dict()
+            # for p_i, key in enumerate(cur_params):
+            #     model_parameter_trajectories[key].append(cur_params[key].clone().detach().numpy())
+            W_syn_list.append(snn.W_syn.clone().detach().flatten().numpy())
+            W_fast_list.append(snn.W_fast.clone().detach().flatten().numpy())
+            W_in_list.append(snn.W_in.clone().detach().flatten().numpy())
+            W_out_list.append(snn.O.clone().detach().flatten().numpy())
+
+            loss_data = loss.clone().detach().data
+            losses.append(loss_data)
+            writer.add_scalar('training loss', scalar_value=loss.clone().detach().data, global_step=i)
             validation_inputs.grad = None; validation_outputs.grad = None
             util.release_computational_graph(model=snn, inputs=current_inputs)
 
@@ -221,6 +241,20 @@ def main(argv):
 
         plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_W_in')
         plot.plot_heatmap(snn.O.T.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_O_T')
+
+        # 🍝 weights across iterations plot.
+        plot.plot_parameter_inference_trajectories_2d({'W_syn': W_syn_list}, target_params=False, uuid=uuid, exp_type=exp_type.name,
+                                                      param_names=['W_syn'], custom_title='Test weights plot',
+                                                      fname='test_W_syn_inference_trajectories')
+        plot.plot_parameter_inference_trajectories_2d({'W_fast': W_fast_list}, target_params=False, uuid=uuid,
+                                                      exp_type=exp_type.name, param_names=['W_fast'], custom_title='Test weights plot',
+                                                      fname='test_W_fast_inference_trajectories')
+        plot.plot_parameter_inference_trajectories_2d({'W_in': W_in_list}, target_params=False, uuid=uuid,
+                                                      exp_type=exp_type.name, param_names=['W_in'], custom_title='Test weights plot',
+                                                      fname='test_W_in_inference_trajectories')
+        plot.plot_parameter_inference_trajectories_2d({'W_out': W_out_list}, target_params=False, uuid=uuid,
+                                                      exp_type=exp_type.name, param_names=['W_out'], custom_title='Test weights plot',
+                                                      fname='test_W_out_inference_trajectories')
 
         return snn
 
