@@ -33,5 +33,5 @@ __pycache__
 
 sbi-logs/*
 
-tensorboard_runs/*
+*tensorboard_runs/*
 *.tf*
