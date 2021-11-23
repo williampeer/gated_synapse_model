@@ -204,7 +204,7 @@ def decompose_param_pair_trajectory_plot(param_2D, current_targets, name, path):
             # plt.xticks([x_min, x_max])
 
         p_len = len(params_by_exp[0])
-        colors = cm.YlGn(np.linspace(0, 1, p_len))
+        colors = cm.viridis(np.linspace(0, 1, p_len))
         for p_i in range(p_len):
             plt.scatter(params_by_exp[0][p_i], params_by_exp[1][p_i], color=colors[p_i], marker='o', s=dot_msize)
 
@@ -226,7 +226,7 @@ def decompose_param_pair_trajectory_plot(param_2D, current_targets, name, path):
 
                 # try:
                 p_len = len(params_by_exp[i])
-                colors = cm.YlGn(np.linspace(0, 1, p_len))
+                colors = cm.viridis(np.linspace(0, 1, p_len))
                 for p_i in range(p_len):
                     cur_ax.scatter(params_by_exp[i][p_i], params_by_exp[j][p_i], color=colors[p_i], marker='o', s=dot_msize)
 
