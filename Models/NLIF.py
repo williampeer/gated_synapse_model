@@ -11,7 +11,7 @@ class NLIF(nn.Module):
     # parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
     parameter_init_intervals = {'W_in': [0., 1.], 'I_o': [0.2, 0.6], 'O': [0.5, 2.]}
 
-    def __init__(self, N=30, w_mean=0.15, w_var=0.1):
+    def __init__(self, N=30, w_mean=0.15, w_var=0.15):
         super(NLIF, self).__init__()
         # self.device = device
 
@@ -24,20 +24,17 @@ class NLIF(nn.Module):
 
         self.self_recurrence_mask = torch.ones((self.N, self.N)) - torch.eye(self.N, self.N)
 
-        rand_ws_syn = (w_mean - w_var) + 2 * w_var * torch.randn((self.N, self.N))
+        rand_ws_syn = (w_mean - w_var) + 2 * w_var * torch.rand((self.N, self.N))
         # rand_ws_syn = rand_ws_syn * self.self_recurrence_mask
         rand_ws_syn = self.self_recurrence_mask * rand_ws_syn
-        rand_ws_fast = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, self.N))
+        rand_ws_fast = (w_mean - w_var) + (2) * w_var * torch.rand((self.N, self.N))
         rand_ws_fast = self.self_recurrence_mask * rand_ws_fast
-        rand_ws_in = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, 2))
-        rand_ws_O = torch.randn((2, self.N))
+        # rand_ws_in = (w_mean - w_var) + (2) * w_var * torch.rand((self.N, 2))
+        # rand_ws_O = (w_mean - w_var) + (2) * torch.rand((2, self.N))
+        rand_ws_in = torch.randn((N, 2))
+        rand_ws_O = torch.randn((2, N))
 
-        # rand_ws_syn = 0.1 * torch.ones((N,N))
-        # rand_ws_fast = 0.1 * torch.ones((N,N))
-        # rand_ws_in = 0.1 * torch.ones((N,2))
-        # rand_ws_O = 0.1 * torch.ones((2,N))
-
-        I_o = 0.05 * torch.randn((N,)).clip(-1., 1.)
+        I_o = 0.05 * torch.rand((N,)).clip(-1., 1.)
 
         self.w_lim = 2.
         self.W_syn = nn.Parameter(FT(rand_ws_syn.clamp(-self.w_lim, self.w_lim)), requires_grad=True)
@@ -50,7 +47,7 @@ class NLIF(nn.Module):
         self.v_reset = 0.
         self.tau_m = 10.
         self.tau_s = 10.
-        self.tau_s_fast = 1.5  # TODO: Check 1 vs 1.5 vs 2
+        self.tau_s_fast = 1.
         # self.Delta = 0.1
 
         self.register_backward_clamp_hooks()
@@ -95,23 +92,19 @@ class NLIF(nn.Module):
         return self.__class__.__name__
 
     def forward(self, x_in):
-        # try:
         I_in = self.W_in.matmul(x_in)
         I_fast_syn = (self.self_recurrence_mask * self.W_fast).matmul(self.s_fast)
         I_syn = (self.self_recurrence_mask * self.W_syn).matmul(self.s)
-        # except RuntimeError as re:
-        #     print('re')
 
         I_tot = I_syn + I_fast_syn + I_in + self.I_o
-        # I_tot = I_syn + I_fast_syn + I_in
         dv = ((I_tot) / self.tau_m)
         v_next = torch.add(self.v, dv)
 
+        # TODO: Implement different gating models
         gating = v_next.clamp(0., 1.)
         ds = (gating * dv.clamp(-1., 1.) - self.s) / self.tau_s
         self.s = self.s + ds
         ds_fast = (gating * dv.clamp(-1., 1.) - self.s_fast) / self.tau_s_fast
-        # ds_fast = (gating * dv.clamp(-1., 1.))
         self.s_fast = self.s_fast + ds_fast
 
         spiked_pos = (v_next >= 1.)

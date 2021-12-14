@@ -25,14 +25,14 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.01
-    # exp_type = ExpType.AutoEncoding
-    exp_type = ExpType.GeneralPredictiveEncoding
-    random_seed_start = 12
-    num_seeds = 1
+    learn_rate = 0.03
+    exp_type = ExpType.AutoEncoding
+    # exp_type = ExpType.GeneralPredictiveEncoding
+    random_seed_start = 21
+    num_seeds = 2
     N = 30
-    train_iters = 240
-    plot_modulo = int(train_iters/10)
+    train_iters = 180
+    plot_modulo = int(train_iters/20)
     # lambda_regularize = 0.01
     lambda_regularize = 0.1 / N
     # lambda_regularize = 0.05
@@ -45,9 +45,9 @@ def main(argv):
     # optimiser = torch.optim.SGD
     optimiser = torch.optim.Adam
     DOUBLE_PRECISION = False
-    # lfn = 'original'
+    lfn = 'original'
     # lfn = 'euclid'
-    lfn = 'van_rossum'
+    # lfn = 'van_rossum'
     # lfn = 'firing_rate'
 
     opts = [opt for opt in argv if opt.startswith("-")]
@@ -250,12 +250,12 @@ def main(argv):
         plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_compare_W_fast')
         plot.plot_heatmap((- snn.W_in.matmul(snn.O)).data, ['-UO column', '-UO row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_compare_minUO')
 
-        sorted_W_fast = sort_matrix_wrt_weighted_centers(snn.W_fast)
-        sorted_W_syn = sort_matrix_wrt_weighted_centers(snn.W_syn)
-        sorted_minUO = sort_matrix_wrt_weighted_centers(-snn.W_in.matmul(snn.O))
-        plot.plot_heatmap(sorted_W_fast.data, ['sorted_W_fast_col', 'sorted_W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_z_sorted_W_fast')
-        plot.plot_heatmap(sorted_W_syn.data, ['sorted_W_syn_col', 'sorted_W_syn_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_z_sorted_W_syn')
-        plot.plot_heatmap(sorted_minUO.data, ['sorted_minUO_col', 'sorted_minUO_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_z_sorted_minUO')
+        # sorted_W_fast = sort_matrix_wrt_weighted_centers(snn.W_fast)
+        # sorted_W_syn = sort_matrix_wrt_weighted_centers(snn.W_syn)
+        # sorted_minUO = sort_matrix_wrt_weighted_centers(-snn.W_in.matmul(snn.O))
+        # plot.plot_heatmap(sorted_W_fast.data, ['sorted_W_fast_col', 'sorted_W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_z_sorted_W_fast')
+        # plot.plot_heatmap(sorted_W_syn.data, ['sorted_W_syn_col', 'sorted_W_syn_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_z_sorted_W_syn')
+        # plot.plot_heatmap(sorted_minUO.data, ['sorted_minUO_col', 'sorted_minUO_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_z_sorted_minUO')
 
         plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_W_in')
         plot.plot_heatmap(snn.O.T.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_O_T')
