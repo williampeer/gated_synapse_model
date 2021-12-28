@@ -29,7 +29,7 @@ def main(argv):
     # exp_type = ExpType.GeneralPredictiveEncoding
     num_seeds = 20
     N = 30
-    train_iters = 100
+    train_iters = 200
     plot_modulo = 10
     lambda_regularize = 0.1 / N
     # lambda_regularize = 0.01 / N
@@ -168,7 +168,8 @@ def main(argv):
         cur_fname = '{}_exp_{}_random_seed_{}'.format(snn.__class__.__name__, 'auto_encode', random_seed)
         IO.save(snn, loss=losses, uuid=uuid, fname=cur_fname)
 
-        plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, custom_title='Loss, $\\alpha$={}, $\lambda$={:.5f}, {}'.format(learn_rate, lambda_regularize, optimiser.__class__.__name__), fname='plot_loss_test')
+        plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, custom_title='Loss, $\\alpha$={}, $\lambda$={:.5f}, {}'.format(learn_rate, lambda_regularize, optimiser.__class__.__name__),
+                       fname='plot_loss_test_mt_{}_et_{}_N_{}_titers_{}'.format(snn.name(), exp_type.name, snn.N, train_iters))
 
         def sort_matrix_wrt_weighted_centers(mat):
             center_tuples = []
