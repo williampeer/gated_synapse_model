@@ -8,6 +8,7 @@ import torch
 import IO
 import plot
 import util
+from Models.LIF import LIF
 from Models.NLIF import NLIF
 from Models.NLIF_double_precision import NLIF_double_precision
 from metrics import original_loss
@@ -26,9 +27,9 @@ def main(argv):
     learn_rate = 0.01
     exp_type = ExpType.AutoEncoding
     # exp_type = ExpType.GeneralPredictiveEncoding
-    num_seeds = 1
+    num_seeds = 20
     N = 30
-    train_iters = 100
+    train_iters = 200
     plot_modulo = 10
     lambda_regularize = 0.1 / N
     # lambda_regularize = 0.01 / N
@@ -64,13 +65,14 @@ def main(argv):
         elif opt in ("-et", "--exp-type"):
             exp_type = ExpType[args[i]]
 
-    for random_seed in range(3, 3+num_seeds):
+    for random_seed in range(23, 23+num_seeds):
         torch.manual_seed(random_seed)
         np.random.seed(random_seed)
 
         # snn = Models.NLIF.NLIF(N=N)
         # snn = NLIF_double_precision(N=N)
-        snn = NLIF(N=N)
+        # snn = NLIF(N=N)
+        snn = LIF(N=N)
         print('- SNN test for class {} -'.format(snn.__class__.__name__))
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
@@ -166,7 +168,8 @@ def main(argv):
         cur_fname = '{}_exp_{}_random_seed_{}'.format(snn.__class__.__name__, 'auto_encode', random_seed)
         IO.save(snn, loss=losses, uuid=uuid, fname=cur_fname)
 
-        plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, custom_title='Loss, $\\alpha$={}, $\lambda$={:.5f}, {}'.format(learn_rate, lambda_regularize, optimiser.__class__.__name__), fname='plot_loss_test')
+        plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, custom_title='Loss, $\\alpha$={}, $\lambda$={:.5f}, {}'.format(learn_rate, lambda_regularize, optimiser.__class__.__name__),
+                       fname='plot_loss_test_mt_{}_et_{}_N_{}_titers_{}'.format(snn.name(), exp_type.name, snn.N, train_iters))
 
         def sort_matrix_wrt_weighted_centers(mat):
             center_tuples = []

@@ -32,3 +32,6 @@ __pycache__
 ._*.mat
 
 sbi-logs/*
+
+*tensorboard_runs/*
+*.tf*

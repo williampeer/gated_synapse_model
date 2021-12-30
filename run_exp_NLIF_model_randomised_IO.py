@@ -4,13 +4,15 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from torch.utils.tensorboard import SummaryWriter
 
 import IO
+import metrics
 import plot
 import util
 from Models.NLIF import NLIF
 from Models.NLIF_double_precision import NLIF_double_precision
-from metrics import original_loss
+from metrics import original_loss, euclid_dist_with_original_loss
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -23,16 +25,17 @@ class ExpType(enum.Enum):
 def main(argv):
     print('Argument List:', str(argv))
 
-    learn_rate = 0.004
-    # exp_type = ExpType.AutoEncoding
-    exp_type = ExpType.GeneralPredictiveEncoding
-    random_seed_start = 7
+    learn_rate = 0.03
+    exp_type = ExpType.AutoEncoding
+    # exp_type = ExpType.GeneralPredictiveEncoding
+    random_seed_start = 21
     num_seeds = 2
     N = 30
-    train_iters = 1000
-    plot_modulo = 50
+    train_iters = 180
+    plot_modulo = int(train_iters/20)
     # lambda_regularize = 0.01
     lambda_regularize = 0.1 / N
+    # lambda_regularize = 0.05
     # lambda_regularize = 0.01 / N
     Delta = 1.
     # Delta = 0.1 / N
@@ -42,6 +45,10 @@ def main(argv):
     # optimiser = torch.optim.SGD
     optimiser = torch.optim.Adam
     DOUBLE_PRECISION = False
+    lfn = 'original'
+    # lfn = 'euclid'
+    # lfn = 'van_rossum'
+    # lfn = 'firing_rate'
 
     opts = [opt for opt in argv if opt.startswith("-")]
     args = [arg for arg in argv if not arg.startswith("-")]
@@ -76,6 +83,7 @@ def main(argv):
         print('- SNN test for class {} -'.format(snn.__class__.__name__))
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
+        writer = SummaryWriter('tensorboard_runs/' + uuid)
 
         period_ms = torch.tensor([period_ms, period_ms / 2, period_ms / 3, period_ms / 4])
 
@@ -102,6 +110,9 @@ def main(argv):
         plot.plot_neuron(v_zero_in.detach().numpy(), ylabel='v', title='Test plot vs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_v_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
         plot.plot_spike_train(spikes_zero_input, title='Test spikes', uuid=uuid, exp_type=exp_type.name, fname='test_plot_spikes_no_input_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
 
+        plot.plot_heatmap(snn.W_syn.data, ['W_syn_col', 'W_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_W_initial')
+        plot.plot_heatmap(snn.W_fast.data, ['W_fast_col', 'W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_compare_W_fast_initial')
+
         val_inputs_1 = util.generate_sum_of_sinusoids(t=t, period_ms=period_ms, A_coeff=A_coeff_1, phase_shifts=phase_shifts_1)
         val_inputs_2 = util.generate_sum_of_sinusoids(t=t, period_ms=period_ms, A_coeff=A_coeff_2, phase_shifts=phase_shifts_2)
         validation_inputs = torch.vstack([val_inputs_1, val_inputs_2]).T
@@ -118,6 +129,14 @@ def main(argv):
 
         losses = []
         val_losses = []
+        model_parameter_trajectories = {}
+        # cur_params = snn.state_dict()
+        # for p_i, key in enumerate(cur_params):
+        #     model_parameter_trajectories[key] = [cur_params[key].clone().detach().numpy()]
+        W_syn_list = []
+        W_fast_list = []
+        W_in_list = []
+        W_out_list = []
         for i in range(train_iters):
             print('training iter: {}..'.format(i))
             optimiser.zero_grad()
@@ -139,7 +158,17 @@ def main(argv):
 
             spikes, readouts, v, s, s_fast = util.feed_inputs_sequentially_return_tuple(snn, current_inputs)
             print('sum model outputs: {}'.format(readouts.sum()))
-            loss = original_loss(readouts, desired_output=target_outputs.clone().detach(), lambda_regularize=lambda_regularize)
+            if lfn == 'original':
+                loss = original_loss(readouts, desired_output=target_outputs.clone().detach(), lambda_regularize=lambda_regularize)
+            elif lfn == 'euclid':
+                loss = euclid_dist_with_original_loss(readouts, desired_output=target_outputs.clone().detach(), lambda_regularize=lambda_regularize)
+            elif lfn == 'van_rossum':
+                loss = metrics.van_rossum_dist(readouts, target_outputs.clone().detach(), tau=20.)
+            elif lfn == 'firing_rate':
+                loss = metrics.firing_rate_distance(readouts, target_outputs.clone().detach())
+            else:
+                raise NotImplementedError()
+
             print('loss: {}'.format(loss))
             try:
                 loss.backward(retain_graph=True)
@@ -159,13 +188,24 @@ def main(argv):
                                  fname='test_plot_readouts_train_iter_{}_{}'.format(i, snn.__class__.__name__) + '_' + str(random_seed))
                 plt.close()
 
+                # cur_params = snn.state_dict()
+                # for p_i, key in enumerate(cur_params):
+                #     model_parameter_trajectories[key].append(cur_params[key].clone().detach().numpy())
+
+                W_syn_list.append(snn.W_syn.clone().detach().flatten().numpy())
+                W_fast_list.append(snn.W_fast.clone().detach().flatten().numpy())
+                W_in_list.append(snn.W_in.clone().detach().flatten().numpy())
+                W_out_list.append(snn.O.clone().detach().flatten().numpy())
+
             _, val_readouts, _, _, _ = util.feed_inputs_sequentially_return_tuple(snn, validation_inputs)
             print('sum model outputs: {}'.format(readouts.sum()))
-            val_loss = original_loss(val_readouts, desired_output=validation_outputs.clone().detach(), lambda_regularize=lambda_regularize)
+            val_loss = euclid_dist_with_original_loss(val_readouts, desired_output=validation_outputs.clone().detach(), lambda_regularize=lambda_regularize)
             print('val_loss: {}'.format(val_loss))
             val_losses.append(val_loss.clone().detach().data)
 
-            losses.append(loss.clone().detach().data)
+            loss_data = loss.clone().detach().data
+            losses.append(loss_data)
+            writer.add_scalar('training loss', scalar_value=loss.clone().detach().data, global_step=i)
             validation_inputs.grad = None; validation_outputs.grad = None
             util.release_computational_graph(model=snn, inputs=current_inputs)
 
@@ -192,8 +232,8 @@ def main(argv):
         cur_fname = '{}_exp_{}_random_seed_{}'.format(snn.__class__.__name__, 'auto_encode', random_seed)
         IO.save(snn, loss=losses, uuid=uuid, fname=cur_fname)
 
-        plot.plot_loss(val_losses, uuid=uuid, exp_type=exp_type.name, custom_title='Validation loss, $\\alpha$={}, $\lambda$={:.5f}, {}'.format(learn_rate, lambda_regularize, optimiser.__class__.__name__), fname='plot_loss_validation_test')
-        plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, custom_title='Loss, $\\alpha$={}, $\lambda$={:.5f}, {}'.format(learn_rate, lambda_regularize, optimiser.__class__.__name__), fname='plot_loss_test')
+        plot.plot_loss(val_losses, uuid=uuid, exp_type=exp_type.name, custom_title='Validation loss ({}), $\\alpha$={}, $\lambda$={:.5f}, {}'.format(lfn, learn_rate, lambda_regularize, optimiser.__class__.__name__), fname='plot_loss_validation_test')
+        plot.plot_loss(losses, uuid=uuid, exp_type=exp_type.name, custom_title='Loss ({}), $\\alpha$={}, $\lambda$={:.5f}, {}'.format(lfn, learn_rate, lambda_regularize, optimiser.__class__.__name__), fname='plot_loss_test')
 
         def sort_matrix_wrt_weighted_centers(mat):
             center_tuples = []
@@ -211,12 +251,28 @@ def main(argv):
         plot.plot_heatmap((- snn.W_in.matmul(snn.O)).data, ['-UO column', '-UO row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_compare_minUO')
 
         # sorted_W_fast = sort_matrix_wrt_weighted_centers(snn.W_fast)
+        # sorted_W_syn = sort_matrix_wrt_weighted_centers(snn.W_syn)
         # sorted_minUO = sort_matrix_wrt_weighted_centers(-snn.W_in.matmul(snn.O))
         # plot.plot_heatmap(sorted_W_fast.data, ['sorted_W_fast_col', 'sorted_W_fast_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_z_sorted_W_fast')
+        # plot.plot_heatmap(sorted_W_syn.data, ['sorted_W_syn_col', 'sorted_W_syn_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_z_sorted_W_syn')
         # plot.plot_heatmap(sorted_minUO.data, ['sorted_minUO_col', 'sorted_minUO_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_z_sorted_minUO')
 
         plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_W_in')
         plot.plot_heatmap(snn.O.T.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_O_T')
+
+        # 🍝 weights across iterations plot.
+        plot.plot_parameter_inference_trajectories_2d({'W_syn': W_syn_list}, target_params=False, uuid=uuid, exp_type=exp_type.name,
+                                                      param_names=['W_syn'], custom_title='Test weights plot',
+                                                      fname='test_W_syn_inference_trajectories')
+        plot.plot_parameter_inference_trajectories_2d({'W_fast': W_fast_list}, target_params=False, uuid=uuid,
+                                                      exp_type=exp_type.name, param_names=['W_fast'], custom_title='Test weights plot',
+                                                      fname='test_W_fast_inference_trajectories')
+        plot.plot_parameter_inference_trajectories_2d({'W_in': W_in_list}, target_params=False, uuid=uuid,
+                                                      exp_type=exp_type.name, param_names=['W_in'], custom_title='Test weights plot',
+                                                      fname='test_W_in_inference_trajectories')
+        plot.plot_parameter_inference_trajectories_2d({'W_out': W_out_list}, target_params=False, uuid=uuid,
+                                                      exp_type=exp_type.name, param_names=['W_out'], custom_title='Test weights plot',
+                                                      fname='test_W_out_inference_trajectories')
 
         return snn
 
