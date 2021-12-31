@@ -11,11 +11,12 @@ class LIF(nn.Module):
     # parameter_init_intervals = {'E_L': [-64., -55.], 'tau_m': [3.5, 4.0], 'G': [0.7, 0.8], 'tau_g': [5., 6.]}
     parameter_init_intervals = {'W_in': [0., 1.], 'I_o': [0.2, 0.6], 'O': [0.5, 2.]}
 
-    def __init__(self, N=30, w_mean=0.15, w_var=0.1):
+    def __init__(self, parameters, N=30, w_mean=0.15, w_var=0.1):
         super(LIF, self).__init__()
         # self.device = device
 
         __constants__ = ['N', 'norm_R_const', 'self_recurrence_mask']
+        print('LIF __init__ N: {}'.format(N))
         self.N = N
 
         self.v = torch.zeros((self.N,))
@@ -32,12 +33,20 @@ class LIF(nn.Module):
         rand_ws_in = (w_mean - w_var) + (2) * w_var * torch.randn((self.N, 2))
         rand_ws_O = torch.randn((2, self.N))
 
-        # rand_ws_syn = 0.1 * torch.ones((N,N))
-        # rand_ws_fast = 0.1 * torch.ones((N,N))
-        # rand_ws_in = 0.1 * torch.ones((N,2))
-        # rand_ws_O = 0.1 * torch.ones((2,N))
-
         I_o = 0.05 * torch.randn((N,)).clip(-1., 1.)
+
+        if parameters:
+            for key in parameters.keys():
+                if key == 'W_in':
+                    rand_ws_in = FT(parameters[key])
+                elif key == 'W_fast':
+                    rand_ws_fast = FT(parameters[key])
+                elif key == 'W_syn':
+                    rand_ws_syn = FT(parameters[key])
+                elif key == 'O':
+                    rand_ws_O = FT(parameters[key])
+                elif key == 'I_o':
+                    I_o = FT(parameters[key])
 
         self.w_lim = 2.
         self.W_syn = nn.Parameter(FT(rand_ws_syn.clamp(-self.w_lim, self.w_lim)), requires_grad=True)

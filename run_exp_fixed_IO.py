@@ -25,9 +25,9 @@ def main(argv):
     print('Argument List:', str(argv))
 
     learn_rate = 0.01
-    exp_type = ExpType.AutoEncoding
-    # exp_type = ExpType.GeneralPredictiveEncoding
-    num_seeds = 20
+    # exp_type = ExpType.AutoEncoding
+    exp_type = ExpType.GeneralPredictiveEncoding
+    num_seeds = 1
     N = 30
     train_iters = 200
     plot_modulo = 10
@@ -41,6 +41,8 @@ def main(argv):
     tau_filter = 50.
     # optimiser = torch.optim.SGD
     optimiser = torch.optim.Adam
+    model_type = 'LIF'
+    # model_type = 'NLIF'
 
     opts = [opt for opt in argv if opt.startswith("-")]
     args = [arg for arg in argv if not arg.startswith("-")]
@@ -64,6 +66,8 @@ def main(argv):
             Delta = float(args[i])
         elif opt in ("-et", "--exp-type"):
             exp_type = ExpType[args[i]]
+        elif opt in ("-mt", "--model-type"):
+            model_type = str(args[i])
 
     for random_seed in range(23, 23+num_seeds):
         torch.manual_seed(random_seed)
@@ -72,7 +76,13 @@ def main(argv):
         # snn = Models.NLIF.NLIF(N=N)
         # snn = NLIF_double_precision(N=N)
         # snn = NLIF(N=N)
-        snn = LIF(N=N)
+        if model_type == 'LIF':
+            snn = LIF(N=N)
+        elif model_type == 'NLIF':
+            snn = NLIF(N=N)
+        else:
+            raise NotImplementedError("Model type not supported: {}".format(model_type))
+
         print('- SNN test for class {} -'.format(snn.__class__.__name__))
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
