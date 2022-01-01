@@ -50,9 +50,10 @@ other_parameters = snn_target.get_parameters()
 print('snn_target.N: {}'.format(snn_target.N))
 # other_parameters['N'] = snn_target.N
 # other_parameters = snn_target.parameters()
-# free_parameters = ['w', 'E_L', 'tau_m', 'G', 'f_v', 'f_I', 'delta_theta_s', 'b_s', 'a_v', 'b_v', 'theta_inf', 'delta_V', 'tau_s']
-plot_param_landscape(LIF, [-70., -40.], [1.5, 10.], 'E_L', 'tau_m', other_parameters, target_signal, num_steps=num_steps, inputs=current_inputs.clone().detach(), N=int(snn_target.N), fname_addition='white_noise')
-plot_param_landscape(LIF, [-70., -40.], [1., 12.], 'E_L', 'tau_s', other_parameters, target_signal, num_steps=num_steps, inputs=current_inputs.clone().detach(), N=snn_target.N, fname_addition='white_noise')
-plot_param_landscape(LIF, [1.5, 10.], [1., 12.], 'tau_m', 'tau_s', other_parameters, target_signal, num_steps=num_steps, inputs=current_inputs.clone().detach(), N=snn_target.N, fname_addition='white_noise')
+# free_parameters = ['W_in', 'I_o', 'O']
+plot_param_landscape(LIF, [-2., 2.], [-2., 2.], 'W_in', 'O', other_parameters, target_signal, num_steps=num_steps, inputs=current_inputs.clone().detach(), N=int(snn_target.N), fname_addition='auto_encoding')
+plot_param_landscape(LIF, [-2., 2.], [-2., 2.], 'W_fast', 'W_syn', other_parameters, target_signal, num_steps=num_steps, inputs=current_inputs.clone().detach(), N=snn_target.N, fname_addition='auto_encoding')
+plot_param_landscape(LIF, [-2., 2.], [-2., 2.], 'W_in', 'W_fast', other_parameters, target_signal, num_steps=num_steps, inputs=current_inputs.clone().detach(), N=snn_target.N, fname_addition='auto_encoding')
+plot_param_landscape(LIF, [-2., 2.], [-2., 2.], 'W_in', 'W_syn', other_parameters, target_signal, num_steps=num_steps, inputs=current_inputs.clone().detach(), N=snn_target.N, fname_addition='auto_encoding')
 
 sys.exit(0)
