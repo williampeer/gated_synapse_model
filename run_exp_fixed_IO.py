@@ -40,7 +40,7 @@ def main(argv):
     t = 120
     tau_filter = 50.
     # optimiser = torch.optim.SGD
-    optimiser = torch.optim.Adam
+    optimiser_class = torch.optim.Adam
     model_type = 'LIF'
     # model_type = 'NLIF'
 
@@ -127,7 +127,7 @@ def main(argv):
         plot.plot_neuron(target_outputs.detach().numpy(), ylabel='target output', title='Test plot target outputs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_itargets_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
 
         optim_params = list(snn.parameters())
-        optimiser = optimiser(optim_params, lr=learn_rate)
+        optimiser = optimiser_class(optim_params, lr=learn_rate)
 
         losses = []
         for i in range(train_iters):
