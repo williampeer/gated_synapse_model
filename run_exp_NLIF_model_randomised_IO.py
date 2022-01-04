@@ -28,8 +28,8 @@ def main(argv):
     learn_rate = 0.03
     exp_type = ExpType.AutoEncoding
     # exp_type = ExpType.GeneralPredictiveEncoding
-    random_seed_start = 21
-    num_seeds = 2
+    random_seed_start = 23
+    num_seeds = 20
     N = 30
     train_iters = 180
     plot_modulo = int(train_iters/20)
@@ -79,7 +79,7 @@ def main(argv):
 
         # snn = Models.NLIF.NLIF(N=N)
         # snn = NLIF_double_precision(N=N)
-        snn = NLIF(N=N)
+        snn = NLIF({}, N=N)
         print('- SNN test for class {} -'.format(snn.__class__.__name__))
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()

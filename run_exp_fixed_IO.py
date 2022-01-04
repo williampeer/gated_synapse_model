@@ -77,9 +77,9 @@ def main(argv):
         # snn = NLIF_double_precision(N=N)
         # snn = NLIF(N=N)
         if model_type == 'LIF':
-            snn = LIF(N=N)
+            snn = LIF({}, N=N)
         elif model_type == 'NLIF':
-            snn = NLIF(N=N)
+            snn = NLIF({}, N=N)
         else:
             raise NotImplementedError("Model type not supported: {}".format(model_type))
 
