@@ -106,7 +106,7 @@ def main(argv):
             inputs = torch.vstack([inputs_1, inputs_2]).T
             target_outputs = util.auto_encode_input(inputs, tau_filter=tau_filter)
         elif exp_type is ExpType.GeneralPredictiveEncoding:
-            inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=cur_period_ms, tau_filter=tau_filter,
+            inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
                                                                                         Delta=Delta, A_in=A_in, A_mat=A_mat)
         else:
             raise NotImplementedError("ExpType not in predefined enum.")
