@@ -94,19 +94,19 @@ def main(argv):
             A_in = torch.tensor([-1., 0.5])
             A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])
         if exp_type is ExpType.AutoEncoding:
-            period_ms = torch.tensor([period_ms, period_ms/2, period_ms/3, period_ms/4])
+            cur_period_ms = torch.tensor([period_ms, period_ms/2, period_ms/3, period_ms/4])
             phase_shifts_1 = torch.tensor([0., 0.1, 0.2, 0.3])
             phase_shifts_2 = phase_shifts_1 + 3.141592/4
             # inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
             #                                                              Delta=Delta, A_in=A_in, phase_shifts=phase_shifts)
             # inputs_1 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=phase_shifts_1)
             # inputs_2 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=phase_shifts_2)
-            inputs_1 = util.generate_sum_of_sinusoids(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
-            inputs_2 = util.generate_sum_of_sinusoids(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
+            inputs_1 = util.generate_sum_of_sinusoids(t=t, period_ms=cur_period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
+            inputs_2 = util.generate_sum_of_sinusoids(t=t, period_ms=cur_period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
             inputs = torch.vstack([inputs_1, inputs_2]).T
             target_outputs = util.auto_encode_input(inputs, tau_filter=tau_filter)
         elif exp_type is ExpType.GeneralPredictiveEncoding:
-            inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
+            inputs, target_outputs = util.general_predictive_encoding_task_input_output(t=t, period_ms=cur_period_ms, tau_filter=tau_filter,
                                                                                         Delta=Delta, A_in=A_in, A_mat=A_mat)
         else:
             raise NotImplementedError("ExpType not in predefined enum.")
