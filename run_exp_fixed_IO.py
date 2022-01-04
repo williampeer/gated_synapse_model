@@ -69,7 +69,7 @@ def main(argv):
         elif opt in ("-mt", "--model-type"):
             model_type = str(args[i])
 
-    for random_seed in range(23, 23+num_seeds):
+    for random_seed in range(23, (23+num_seeds)):
         torch.manual_seed(random_seed)
         np.random.seed(random_seed)
 
