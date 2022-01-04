@@ -25,9 +25,9 @@ def main(argv):
     print('Argument List:', str(argv))
 
     learn_rate = 0.01
-    # exp_type = ExpType.AutoEncoding
-    exp_type = ExpType.GeneralPredictiveEncoding
-    num_seeds = 1
+    exp_type = ExpType.AutoEncoding
+    # exp_type = ExpType.GeneralPredictiveEncoding
+    num_seeds = 20
     N = 30
     train_iters = 200
     plot_modulo = 10
