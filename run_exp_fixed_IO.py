@@ -206,9 +206,7 @@ def main(argv):
         plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_W_in')
         plot.plot_heatmap(snn.O.T.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_O_T')
 
-        return snn
-
 
 if __name__ == "__main__":
-    snn = main(sys.argv[1:])
+    main(sys.argv[1:])
     # sys.exit(0)
