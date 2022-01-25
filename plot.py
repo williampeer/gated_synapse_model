@@ -134,6 +134,51 @@ def plot_heatmap(heat_mat, axes, exp_type, uuid, fname):
     plt.close()
 
 
+def plot_p_landscape_heatmap(heat_mat, axes, exp_type, uuid, fname, target_coords=False, xticks=False, yticks=False, v_min=0, v_max=1, cbar_label='loss'):
+    full_path = './figures/' + exp_type + '/' + uuid + '/'
+    IO.makedir_if_not_exists('./figures/' + exp_type + '/')
+    IO.makedir_if_not_exists(full_path)
+
+    data = {'heat_mat': heat_mat, 'exp_type': exp_type, 'uuid': uuid, 'fname': fname}
+    IO.save_plot_data(data=data, uuid=uuid, plot_fn='plot_heatmap')
+
+    for row_i in range(heat_mat.shape[0]):
+        for col_i in range(heat_mat.shape[1]):
+            if np.isnan(heat_mat[row_i][col_i]):
+                heat_mat[row_i][col_i] = 0.
+
+    fig = plt.figure()
+    im = plt.imshow(heat_mat, cmap="PuOr", vmin=v_min, vmax=v_max)
+    cbar = plt.colorbar(im)
+    cbar.set_label(cbar_label)
+    ticks_fmt = lambda x: float('{:.2f}'.format(x))
+    if xticks:
+        N_dim = len(xticks)
+        tar_xticks = [xticks[0], xticks[int(N_dim/2)], xticks[-1]]
+        tar_xticks = list(map(ticks_fmt, tar_xticks))
+        plt.xticks([0, int(N_dim/2), N_dim-1], tar_xticks)
+    else:
+        plt.xticks(np.arange(0, len(heat_mat), 5))
+    if yticks:
+        N_dim = len(yticks)
+        tar_yticks = [yticks[0], yticks[int(N_dim / 2)], yticks[-1]]
+        tar_yticks = list(map(ticks_fmt, tar_yticks))
+        plt.yticks([0, int(N_dim / 2), N_dim - 1], [yticks[0], yticks[int(N_dim / 2)], yticks[-1]])
+    else:
+        plt.yticks(np.arange(0, len(heat_mat)))
+    plt.xlabel(axes[0])
+    plt.ylabel(axes[1])
+    if target_coords:
+        plt.scatter(target_coords[0], target_coords[1], color='magenta', marker='x', s=30.0)
+    # plt.show()
+
+    IO.makedir_if_not_exists(full_path)
+    plt.savefig(fname=full_path + fname)
+    plt.close()
+    return fig
+
+
+
 def plot_loss(loss, uuid, exp_type='default', custom_title=False, fname=False):
     if not fname:
         fname = 'loss_'+IO.dt_descriptor()
@@ -271,3 +316,26 @@ def plot_parameter_inference_trajectories_2d(param_means, target_params, param_n
                     if current_targets is not False:
                         current_targets = current_targets[:max_index]
                     decompose_param_pair_trajectory_plot(cur_p[:, :max_index], current_targets, name=name, path=param_path)
+
+
+def plot_parameter_landscape(p1s, p2s, p1_name, p2_name, summary_statistic, statistic_name, exp_type, uuid, fname):
+    full_path = './figures/' + exp_type + '/' + uuid + '/'
+    IO.makedir_if_not_exists('./figures/' + exp_type + '/')
+    IO.makedir_if_not_exists(full_path)
+
+    data = {'p1s': p1s, 'p2s': p2s, 'summary_statistic': summary_statistic,
+            'p1_name': p1_name, 'p2_name': p2_name, 'statistic_name': statistic_name,
+            'exp_type': exp_type, 'uuid': uuid, 'fname': fname}
+    IO.save_plot_data(data=data, uuid=uuid, plot_fn=fname)
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    surf = ax.plot_trisurf(p1s, p2s, summary_statistic, cmap=plt.cm.jet, linewidth=0.01)
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+    ax.set_xlabel('${}$'.format(p1_name))
+    ax.set_ylabel('${}$'.format(p2_name))
+    ax.set_zlabel('${}$'.format(statistic_name))
+    # ax.view_init(30, 45)
+    # plt.show()
+    plt.savefig(fname=full_path + fname)
+    plt.close()

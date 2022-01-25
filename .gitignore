@@ -29,6 +29,8 @@ __pycache__
 *.csv
 *.txt
 *.pt
+!saved/LIF/12-31_10-51-36-589/LIF_exp_auto_encode_random_seed_23.pt
+!saved/NLIF/12-31_10-52-10-075/NLIF_exp_auto_encode_random_seed_23.pt
 ._*.mat
 
 sbi-logs/*

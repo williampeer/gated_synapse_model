@@ -40,13 +40,18 @@ def main(argv):
     t = 120
     tau_filter = 50.
     # optimiser = torch.optim.SGD
-    optimiser = torch.optim.Adam
+    optimiser_class = torch.optim.Adam
+    model_type = 'LIF'
+    # model_type = 'NLIF'
 
     opts = [opt for opt in argv if opt.startswith("-")]
     args = [arg for arg in argv if not arg.startswith("-")]
     for i, opt in enumerate(opts):
         if opt == '-h':
-            print('run_exp_NLIF_model.py -lr <learning-rate>')
+            print('DEMO.py -lr <learning-rate> -ti <training-iterations> -nsds <number-of-random-seeds> -N <network-size>'
+                  '-t <interval-millis-per-training-iteration> -D <Delta> -et <experiment-type> -mt <model-type>')
+            print('DEFAULT VALUES:\n-lr {} -ti {} -nsds {} -N {} -t {} -D {} -et {} -mt {}'
+                  .format(learn_rate, train_iters, num_seeds, N, t, Delta, exp_type, model_type))
             sys.exit()
         elif opt in ("-lr", "--learning-rate"):
             learn_rate = float(args[i])
@@ -64,15 +69,20 @@ def main(argv):
             Delta = float(args[i])
         elif opt in ("-et", "--exp-type"):
             exp_type = ExpType[args[i]]
+        elif opt in ("-mt", "--model-type"):
+            model_type = str(args[i])
 
-    for random_seed in range(23, 23+num_seeds):
+    for random_seed in range(23, (23+num_seeds)):
         torch.manual_seed(random_seed)
         np.random.seed(random_seed)
 
-        # snn = Models.NLIF.NLIF(N=N)
-        # snn = NLIF_double_precision(N=N)
-        # snn = NLIF(N=N)
-        snn = LIF(N=N)
+        if model_type == 'LIF':
+            snn = LIF({}, N=N)
+        elif model_type == 'NLIF':
+            snn = NLIF({}, N=N)
+        else:
+            raise NotImplementedError("Model type not supported: {}".format(model_type))
+
         print('- SNN test for class {} -'.format(snn.__class__.__name__))
 
         uuid = snn.__class__.__name__ + '/' + IO.dt_descriptor()
@@ -84,15 +94,11 @@ def main(argv):
             A_in = torch.tensor([-1., 0.5])
             A_mat = torch.tensor([[-0.7, 0.36], [-2.3, -0.1]])
         if exp_type is ExpType.AutoEncoding:
-            period_ms = torch.tensor([period_ms, period_ms/2, period_ms/3, period_ms/4])
+            cur_period_ms = torch.tensor([period_ms, period_ms/2, period_ms/3, period_ms/4])
             phase_shifts_1 = torch.tensor([0., 0.1, 0.2, 0.3])
-            phase_shifts_2 = phase_shifts_1 + 3.141592/4
-            # inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
-            #                                                              Delta=Delta, A_in=A_in, phase_shifts=phase_shifts)
-            # inputs_1 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=phase_shifts_1)
-            # inputs_2 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=phase_shifts_2)
-            inputs_1 = util.generate_sum_of_sinusoids(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
-            inputs_2 = util.generate_sum_of_sinusoids(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
+            # phase_shifts_2 = phase_shifts_1 + 3.141592/4
+            inputs_1 = util.generate_sum_of_sinusoids(t=t, period_ms=cur_period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
+            inputs_2 = util.generate_sum_of_sinusoids(t=t, period_ms=cur_period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
             inputs = torch.vstack([inputs_1, inputs_2]).T
             target_outputs = util.auto_encode_input(inputs, tau_filter=tau_filter)
         elif exp_type is ExpType.GeneralPredictiveEncoding:
@@ -117,7 +123,7 @@ def main(argv):
         plot.plot_neuron(target_outputs.detach().numpy(), ylabel='target output', title='Test plot target outputs', uuid=uuid, exp_type=exp_type.name, fname='test_plot_itargets_{}'.format(snn.__class__.__name__) + '_' + str(random_seed))
 
         optim_params = list(snn.parameters())
-        optimiser = optimiser(optim_params, lr=learn_rate)
+        optimiser = optimiser_class(optim_params, lr=learn_rate)
 
         losses = []
         for i in range(train_iters):
@@ -133,10 +139,6 @@ def main(argv):
                 loss.backward(retain_graph=True)
             except RuntimeError as re:
                 print(re)
-
-            # for p_i, param in enumerate(list(snn.parameters())):
-            #     print('grad for param #{}: {}'.format(p_i, param.grad))
-            # print('W_fast.grad: {}'.format(snn.W_fast.grad))
 
             optimiser.step()
 
@@ -196,9 +198,7 @@ def main(argv):
         plot.plot_heatmap(snn.W_in.data, ['W_in_col', 'W_in_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_W_in')
         plot.plot_heatmap(snn.O.T.data, ['O_col', 'O_row'], uuid=uuid, exp_type=exp_type.name, fname='test_heatmap_2_O_T')
 
-        return snn
-
 
 if __name__ == "__main__":
-    snn = main(sys.argv[1:])
-    # sys.exit(0)
+    main(sys.argv[1:])
+    sys.exit(0)
