@@ -7,6 +7,21 @@ import torch
 import IO
 import plot
 
+
+def proper_label(p_name):
+    return p_name\
+        .replace('W_syn', 'W_{syn}')\
+        .replace('W_fast', 'W_{fast}')\
+        .replace('W_in', 'W_{in}')\
+        .replace('tau_theta', '\\tau_{\\theta}')\
+        .replace('J_theta', 'J_{\\theta}')\
+        .replace('tau_m', '\\tau_m')\
+        .replace('tau_s', '\\tau_s')\
+        .replace('Delta_u', '\\Delta_u')\
+        .replace('theta_inf', '\\theta_{inf}')\
+        .replace('delta_theta_s', '\\delta_{\\theta_s}')
+
+
 GT_model_by_class = { 'LIF': '12-31_10-51-36-589',
                       'NLIF': '12-31_10-52-10-075' }
 
@@ -63,9 +78,9 @@ for mt_str in model_type_dirs:
         #   pt: -50. => tp1i := (-50. + 70) / 30 = 2/3. OK.
         #   pt: 2. => tp1 := (2-1.5) / (3.5-1.5) = 1/4. OK.
         interval_2 = save_data['p2s'][-1] - save_data['p2s'][0]  # interval
-        t_p1_index = int(N_dim * ((np.mean(tar_p1) - save_data['p1s'][0]) / interval_1))
-        t_p2_index = int(N_dim * ((np.mean(tar_p2) - save_data['p2s'][0]) / interval_2))
-        target_coords = [t_p1_index, t_p2_index]
+        # t_p1_index = int(N_dim * ((np.mean(tar_p1) - save_data['p1s'][0]) / interval_1))
+        # t_p2_index = int(N_dim * ((np.mean(tar_p2) - save_data['p2s'][0]) / interval_2))
+        # target_coords = [t_p1_index, t_p2_index]
         xticks = []
         yticks = []
         for i_tick in range(N_dim):
@@ -73,10 +88,10 @@ for mt_str in model_type_dirs:
             yticks.append(save_data['p2s'][i_tick])
         # ---------------- target data feature request from Arno ------------------
 
-        axes = ['${}$'.format(save_data['p1_name']), '${}$'.format(save_data['p2_name'])]
+        axes = ['${}$'.format(proper_label(save_data['p1_name'])), '${}$'.format(proper_label(save_data['p2_name']))]
         exp_type = 'test'; uuid = 'export_p_landscape_2d'
         # model_N =
         plot.plot_p_landscape_heatmap(heat_mat, axes, exp_type, uuid, fname=mt_str+'/test_export_2d_heatmap_N_{}_{}_{}_{}.eps'.format(model_N, statistic_name, save_data['p1_name'], save_data['p2_name']),
-                                      target_coords=target_coords, xticks=xticks, yticks=yticks, cbar_label=statistic_name)
+                                      target_coords=False, xticks=xticks, yticks=yticks, cbar_label=statistic_name)
 
 sys.exit()

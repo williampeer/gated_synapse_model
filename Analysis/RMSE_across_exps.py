@@ -4,7 +4,9 @@ import sys
 import numpy as np
 import torch
 
+import plot
 import util
+from Analysis import euid_to_exp_type
 from Models.LIF import LIF
 from Models.NLIF import NLIF
 
@@ -52,7 +54,7 @@ def get_rmse(model, random_seed, exp_type, t=120):
     return calc_rmse(readouts, target=target_outputs.clone().detach())
 
 
-experiments_path = '/home/william/repos/archives_snn_inference/sut_archive_gating/saved/'
+experiments_path = '/home/william/repos/archives_snn_inference/archive_full_gating_0401/archive/saved/'
 # exp_types = ['AutoEncoding', 'GeneralPredictiveEncoding']
 
 model_class_lookup = {'LIF': LIF, 'NLIF': NLIF}
@@ -61,7 +63,8 @@ model_class_lookup = {'LIF': LIF, 'NLIF': NLIF}
 # model_type_dirs = os.listdir(experiments_path)
 model_type_dirs = ['LIF', 'NLIF']
 
-res = { 'AutoEncoding': { 'LIF': [], 'NLIF': [] }, 'GeneralPredictiveEncoding': { 'LIF': [], 'NLIF': [] } }
+rmse_res = {'AutoEncoding': {'LIF': [], 'NLIF': []}, 'GeneralPredictiveEncoding': {'LIF': [], 'NLIF': []}}
+diverged_res = {'AutoEncoding': {'LIF': [], 'NLIF': []}, 'GeneralPredictiveEncoding': {'LIF': [], 'NLIF': []}}
 for model_type_str in model_type_dirs:
     if not model_type_str.__contains__("plot_data"):
         model_class = model_class_lookup[model_type_str]
@@ -71,20 +74,43 @@ for model_type_str in model_type_dirs:
             for euid in exp_uids:
                 files = os.listdir(experiments_path + '/' + model_type_str + '/' + euid)
                 file_name = list(filter(lambda x: x.__contains__('LIF_exp'), files))[0]  # 'LIF_exp_auto_encode_random_seed_23'
-                random_seed = file_name.split('random_seed_')[1]
-                exp_type = file_name.split('_random_seed')[0].split('exp_')[1]
+                print('file_name:', file_name)
+                random_seed = int(file_name.split('random_seed_')[1].strip('.pt'))
+                # exp_type = file_name.split('_random_seed')[0].split('exp_')[1]
+                exp_type = euid_to_exp_type.euid_to_exp_type[euid]
+                print('exp_type:', exp_type)
 
                 load_data = torch.load(experiments_path + '/' + model_type_str + '/' + euid + '/' + file_name)
                 snn = load_data['model']
 
                 cur_rmse = get_rmse(snn, random_seed, exp_type)
-                res[exp_type][model_type_str].append(cur_rmse)
+                if np.isnan(cur_rmse):
+                    if diverged_res[exp_type][model_type_str]:
+                        diverged_res[exp_type][model_type_str]+=1
+                    else:
+                        diverged_res[exp_type][model_type_str] = 1
+                else:
+                    rmse_res[exp_type][model_type_str].append(cur_rmse)
         else:
             print('path does not exist: {}'.format(experiments_path + '/' + model_type_str))
 
 # sys.exit()
-print('res:', res)
-for exp_type, exp_key in enumerate(res):
-    for model_type, m_name in enumerate(res[exp_key]):
+print('res:', rmse_res)
+N_per_config = []
+rmse_per_config = []
+rmse_std_per_config = []
+config_labels = []
+for exp_type, exp_key in enumerate(rmse_res):
+    for model_type, m_name in enumerate(rmse_res[exp_key]):
         print('exp_key: {}, m_name: {}'.format(exp_key, m_name))
-        print('mean_rmse: ', np.mean(res[exp_key][m_name]))
+        mean_rmse = np.mean(rmse_res[exp_key][m_name]); std_rmse = np.std(rmse_res[exp_key][m_name])
+        print('mean_rmse: ', mean_rmse); print('std_rmse: ', std_rmse)
+        N_for_config = len(rmse_res[exp_key][m_name])
+        print('N_for_config', N_for_config)
+
+        N_per_config.append(N_for_config)
+        rmse_per_config.append(mean_rmse)
+        rmse_std_per_config.append(std_rmse)
+        config_labels.append('{}\n{}'.format(exp_key, m_name))
+
+plot.bar_plot(rmse_per_config, rmse_std_per_config, config_labels, 'analysis', 'export_rmse', 'rmse_per_config_test.eps', ylabel='RMSE')
