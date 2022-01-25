@@ -48,7 +48,10 @@ def main(argv):
     args = [arg for arg in argv if not arg.startswith("-")]
     for i, opt in enumerate(opts):
         if opt == '-h':
-            print('run_exp_NLIF_model.py -lr <learning-rate>')
+            print('DEMO.py -lr <learning-rate> -ti <training-iterations> -nsds <number-of-random-seeds> -N <network-size>'
+                  '-t <interval-millis-per-training-iteration> -D <Delta> -et <experiment-type> -mt <model-type>')
+            print('DEFAULT VALUES:\n-lr {} -ti {} -nsds {} -N {} -t {} -D {} -et {} -mt {}'
+                  .format(learn_rate, train_iters, num_seeds, N, t, Delta, exp_type, model_type))
             sys.exit()
         elif opt in ("-lr", "--learning-rate"):
             learn_rate = float(args[i])
@@ -73,9 +76,6 @@ def main(argv):
         torch.manual_seed(random_seed)
         np.random.seed(random_seed)
 
-        # snn = Models.NLIF.NLIF(N=N)
-        # snn = NLIF_double_precision(N=N)
-        # snn = NLIF(N=N)
         if model_type == 'LIF':
             snn = LIF({}, N=N)
         elif model_type == 'NLIF':
@@ -96,11 +96,7 @@ def main(argv):
         if exp_type is ExpType.AutoEncoding:
             cur_period_ms = torch.tensor([period_ms, period_ms/2, period_ms/3, period_ms/4])
             phase_shifts_1 = torch.tensor([0., 0.1, 0.2, 0.3])
-            phase_shifts_2 = phase_shifts_1 + 3.141592/4
-            # inputs, target_outputs = util.auto_encoder_task_input_output(t=t, period_ms=period_ms, tau_filter=tau_filter,
-            #                                                              Delta=Delta, A_in=A_in, phase_shifts=phase_shifts)
-            # inputs_1 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=phase_shifts_1)
-            # inputs_2 = util.generate_sum_of_sinusoids_vector(t=t, period_ms=period_ms, A_coeff=torch.randn((4,)), phase_shifts=phase_shifts_2)
+            # phase_shifts_2 = phase_shifts_1 + 3.141592/4
             inputs_1 = util.generate_sum_of_sinusoids(t=t, period_ms=cur_period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
             inputs_2 = util.generate_sum_of_sinusoids(t=t, period_ms=cur_period_ms, A_coeff=torch.randn((4,)), phase_shifts=torch.rand((4,)))
             inputs = torch.vstack([inputs_1, inputs_2]).T
@@ -143,10 +139,6 @@ def main(argv):
                 loss.backward(retain_graph=True)
             except RuntimeError as re:
                 print(re)
-
-            # for p_i, param in enumerate(list(snn.parameters())):
-            #     print('grad for param #{}: {}'.format(p_i, param.grad))
-            # print('W_fast.grad: {}'.format(snn.W_fast.grad))
 
             optimiser.step()
 
@@ -209,4 +201,4 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-    # sys.exit(0)
+    sys.exit(0)
